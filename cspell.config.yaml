@@ -11,6 +11,7 @@ dictionaries:
   - companies
   - fullstack
 ignorePaths:
+  - "**/*.asc" # armored PGP keys
   - "**/*.lock"
   - config/home/.config/k9s/skins/**
   - .claude/.scratch/**
@@ -104,3 +105,13 @@ words:
   - zdiff
   - zensh
   - zstd
+  - npmjs
+  - pythonhosted
+  - gallerycdn
+  - vsassets
+  - dnsutils
+  - GNUPGHOME
+  - conntrack
+  - ctstate
+  - dport
+  - drwx

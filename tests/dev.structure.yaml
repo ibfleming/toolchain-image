@@ -4,16 +4,59 @@ schemaVersion: 2.0.0
 
 metadataTest:
   entrypoint: []
+  envVars:
+    - key: CLAUDE_CONFIG_DIR
+      value: /home/vscode/.claude
+    - key: DISABLE_UPDATES
+      value: "1"
   labels:
     - key: devcontainer.metadata
       value: '.*"remoteUser":"vscode".*'
       isRegex: true
 
 commandTests:
-  - name: vscode has passwordless sudo
+  - name: vscode has NO general sudo (policy and firewall must be enforceable)
     command: su
-    args: ["vscode", "-c", "sudo -n true && echo ok"]
-    expectedOutput: ["\\Aok\\n?\\z"]
+    args: [vscode, -c, "sudo -n true 2>&1 || echo denied"]
+    expectedOutput: ["denied"]
+
+  - name: vscode's only sudo right is init-firewall without arguments
+    command: su
+    args: [vscode, -c, "sudo -n -l"]
+    expectedOutput: ['\(root\) NOPASSWD: /usr/local/sbin/init-firewall ""']
+    excludedOutput: ["ALL\\s*\\n?\\z", "NOPASSWD: ALL"]
+
+  - name: firewall is a no-op unless the container opts in
+    command: su
+    args: [vscode, -c, "toolchain-firewall"]
+    expectedOutput: ["toolchain-firewall: off"]
+
+  - name: vscode can read the managed policy (dirs must be searchable)
+    command: su
+    args: [vscode, -c, "cat /etc/claude-code/managed-settings.json"]
+    expectedOutput: ['"disableBypassPermissionsMode": "disable"']
+
+  - name: claude loads the managed policy without errors (as vscode, offline-safe)
+    command: su
+    args: [vscode, -c, "timeout 60 claude doctor </dev/null 2>&1"]
+    expectedOutput: ["Running: native"]
+    excludedOutput: ["Invalid settings", "EACCES"]
+
+  - name: a planted ~/.local/bin/claude cannot shadow the real one (user bins are last on PATH)
+    command: su
+    args:
+      - vscode
+      - -c
+      - >-
+        mkdir -p ~/.local/bin && printf '#!/bin/sh\necho FAKE\n' > ~/.local/bin/claude
+        && chmod +x ~/.local/bin/claude && zsh -i -c 'claude --version'
+    expectedOutput: ["\\(Claude Code\\)"]
+    excludedOutput: ["FAKE"]
+
+  - name: claude runs, pinned, from the root-owned path
+    command: su
+    args: [vscode, -c, "command -v claude; claude --version"]
+    expectedOutput: ["\\A/usr/local/bin/claude\\n[0-9]+\\.[0-9]+\\.[0-9]+ \\(Claude Code\\)"]
 
   - name: dev conveniences present
     command: which
@@ -53,7 +96,34 @@ commandTests:
       - "_k9s: function"
 
 fileExistenceTests:
-  - name: sudoers grant
+  - name: no blanket sudoers grant
     path: /etc/sudoers.d/vscode
+    shouldExist: false
+  - name: firewall-only sudoers grant
+    path: /etc/sudoers.d/toolchain-firewall
     shouldExist: true
     permissions: "-r--r-----"
+  - name: claude binary is root-owned and not user-writable
+    path: /usr/local/bin/claude
+    shouldExist: true
+    permissions: "-rwxr-xr-x"
+    uid: 0
+    gid: 0
+  - name: managed policy is root-owned, world-readable
+    path: /etc/claude-code/managed-settings.json
+    shouldExist: true
+    permissions: "-rw-r--r--"
+    uid: 0
+  - name: claude config dir pre-created for the volume (vscode, 0700)
+    path: /home/vscode/.claude
+    shouldExist: true
+    permissions: "drwx------"
+    uid: 1000
+
+fileContentTests:
+  - name: managed policy disables bypass mode and denies secret reads
+    path: /etc/claude-code/managed-settings.json
+    expectedContents:
+      - '"disableBypassPermissionsMode": "disable"'
+      - 'Read\(~/\.ssh/\*\*\)'
+      - 'Read\(//\*\*/\.env\)'

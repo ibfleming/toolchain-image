@@ -8,9 +8,10 @@ export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 mkdir -p "$XDG_STATE_HOME/zsh" "$XDG_CACHE_HOME/zsh" "$XDG_DATA_HOME/zsh"
 
-# Unique, ordered PATH; user bins first, only if they exist.
+# Unique, ordered PATH. User bins go LAST (only if they exist) so they can't shadow
+# root-owned system tools (claude, git, kubectl, ...).
 typeset -gU path fpath
-path=("$HOME/.local/bin"(N/) "$HOME/go/bin"(N/) $path)
+path=($path "$HOME/.local/bin"(N/) "$HOME/go/bin"(N/))
 
 if (($+commands[nvim])); then
   export EDITOR=nvim VISUAL=nvim

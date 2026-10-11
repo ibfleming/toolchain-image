@@ -1,0 +1,28 @@
+// Template .devcontainer/devcontainer.json for repos that use the toolchain dev image.
+// Editor extensions/settings, remoteUser, zsh and the firewall hook come from the image's
+// devcontainer.metadata label; this file only holds what is per-repo or not allowed in a label.
+{
+  "name": "my-project",
+
+  // Pin by digest (GHCR tags are mutable); Renovate bumps it. Never a bare tag.
+  "image": "ghcr.io/ibfleming/toolchain/dev:<version>@sha256:<digest>",
+
+  "mounts": [
+    // Per-project Claude Code state (CLAUDE_CONFIG_DIR): sessions, history, /config edits.
+    "source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
+    // zsh history across rebuilds.
+    "source=zsh-state-${devcontainerId},target=/home/vscode/.local/state/zsh,type=volume"
+  ],
+
+  // Claude Code auth: a `claude setup-token` token kept in a 0600 file in WSL, outside any
+  // repo, containing CLAUDE_CODE_OAUTH_TOKEN=<token>. Container creation fails if it's missing.
+  "runArgs": ["--env-file", "${localEnv:HOME}/.config/claude-code/container.env"]
+
+  // Optional egress firewall (e.g. for unattended Claude runs). Uncomment all three:
+  // "containerEnv": {
+  //   "TOOLCHAIN_FIREWALL": "1",
+  //   // extra hostnames / IPv4 / CIDRs, space-separated (homelab ranges, private registries)
+  //   "TOOLCHAIN_FIREWALL_ALLOW": "172.16.10.0/24"
+  // },
+  // "capAdd": ["NET_ADMIN", "NET_RAW"],
+}

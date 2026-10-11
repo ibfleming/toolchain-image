@@ -37,6 +37,7 @@ probe() {
     *kubens) kubens --version ;;
     *kubectx) kubectx --version ;;
     *neovim) nvim --version ;;
+    claude-code) claude --version ;;
     *)
       echo "smoke: no probe for '$1' - add one to tests/smoke.sh" >&2
       return 2

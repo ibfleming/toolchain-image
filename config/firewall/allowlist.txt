@@ -1,0 +1,45 @@
+# Outbound allowlist for the opt-in dev container firewall (init-firewall).
+# One hostname per line; resolved to IPv4 once when the firewall starts. `#` starts a comment.
+# GitHub's web/api/git CIDRs are added separately from https://api.github.com/meta.
+# Per-repo additions: containerEnv TOOLCHAIN_FIREWALL_ALLOW="host-or-cidr ..." (see devcontainer/).
+
+# --- Claude Code (https://code.claude.com/docs/en/network-config; telemetry hosts deliberately omitted)
+api.anthropic.com
+claude.ai
+claude.com
+platform.claude.com
+downloads.claude.ai
+mcp-proxy.anthropic.com
+
+# --- GitHub (git over HTTPS, API, release downloads, container registry)
+github.com
+api.github.com
+codeload.github.com
+objects.githubusercontent.com
+raw.githubusercontent.com
+release-assets.githubusercontent.com
+ghcr.io
+pkg-containers.githubusercontent.com
+
+# --- package registries for the baked toolchain
+registry.npmjs.org
+pypi.org
+files.pythonhosted.org
+proxy.golang.org
+sum.golang.org
+registry.opentofu.org
+
+# --- VS Code server + marketplace; extensions download from <publisher>.gallerycdn.vsassets.io
+update.code.visualstudio.com
+marketplace.visualstudio.com
+vscode.blob.core.windows.net
+anthropic.gallerycdn.vsassets.io
+editorconfig.gallerycdn.vsassets.io
+ms-python.gallerycdn.vsassets.io
+charliermarsh.gallerycdn.vsassets.io
+golang.gallerycdn.vsassets.io
+llvm-vs-code-extensions.gallerycdn.vsassets.io
+ms-vscode.gallerycdn.vsassets.io
+opentofu.gallerycdn.vsassets.io
+redhat.gallerycdn.vsassets.io
+tamasfe.gallerycdn.vsassets.io
