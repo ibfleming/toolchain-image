@@ -1,9 +1,17 @@
 #!/usr/bin/env bash
-# Markdown release notes for the release workflow: digests, how to consume and verify,
-# the toolchain manifest (from the released dev image), and the vulnerability report.
-# Env: REGISTRY VERSION CI_DIGEST DEV_DIGEST IDENTITY; reads scan.md if present.
+# Markdown release notes for the release workflow: what changed (git-cliff), digests, how to
+# consume and verify, the toolchain manifest (from the released dev image), and the
+# vulnerability report.
+# Env: REGISTRY VERSION CI_DIGEST DEV_DIGEST IDENTITY; reads changes.md and scan.md if present.
 set -euo pipefail
 : "${REGISTRY:?}" "${VERSION:?}" "${CI_DIGEST:?}" "${DEV_DIGEST:?}" "${IDENTITY:?}"
+
+if [[ -f changes.md ]]; then
+  # git-cliff's section for this version, minus its own "## [x.y.z] - date" heading
+  printf '## Changes\n\n'
+  sed '1{/^## \[/d}' changes.md | sed '/./,$!d'
+  echo
+fi
 
 cat <<EOF
 ## Images

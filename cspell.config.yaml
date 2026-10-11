@@ -112,3 +112,4 @@ words:
   - SHASUMS
   - dnsmasq
   - commitlint
+  - striptags

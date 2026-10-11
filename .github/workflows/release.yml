@@ -125,6 +125,9 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
           IDENTITY: https://github.com/${{ github.workflow_ref }}
         run: |
+          # The tag exists by now (pushed, or created above), so --latest is this release's range.
+          git-cliff --latest --strip all > changes.md
+          git-cliff --output CHANGELOG.md
           scripts/release-notes.sh > notes.md
           cat notes.md >> "$GITHUB_STEP_SUMMARY"
-          gh release create "$TAG" --title "$TAG" --notes-file notes.md --verify-tag
+          gh release create "$TAG" CHANGELOG.md --title "$TAG" --notes-file notes.md --verify-tag

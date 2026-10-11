@@ -5,7 +5,8 @@
 .claude/settings.local.json
 CLAUDE.local.md
 
-# Build outputs
+# Build outputs (CHANGELOG.md is generated: `make changelog`, attached to releases)
+CHANGELOG.md
 bake-meta.json
 *.sbom.json
 
