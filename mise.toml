@@ -3,8 +3,8 @@
 [tools]
 hadolint = "2.15.1"
 container-structure-test = "1.22.1"
-# 3.x: the binary is `ec`. 4.x needs a newer mise registry than the one on the WSL host.
-editorconfig-checker = "3.11.3"
+# Binary is `editorconfig-checker` (4.x registry) or `ec` (older); the Makefile resolves either.
+editorconfig-checker = "4.0.2"
 shfmt = "3.14.1"
 shellcheck = "0.11.0"
 taplo = "0.10.0"

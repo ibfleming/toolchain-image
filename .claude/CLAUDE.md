@@ -86,7 +86,7 @@ Design sources, which are authoritative unless the user overrides them:
 - Dockerfile `RUN` continuations start with two spaces and then `&&`. `.vscode/` is not versioned (user preference): the EditorConfig extension (shipped in the dev image label) overrides VS Code's tab-forcing Makefile default, and `make lint` is the backstop.
 - A URL that can't be wrapped gets `# editorconfig-checker-disable-next-line` on the line above it (as in the k9s yaml-language-server headers). Never append the marker to the URL line itself.
 - Gotcha: an `.editorconfig` section containing `/` anywhere is anchored to the repo root as a whole. Mixed lists must use `**.ext`, not `*.ext`; `*.ext` there silently matches only root-level files.
-- Gotcha: the user's WSL mise (2026.5.14) can't install editorconfig-checker 4.x (registry too old), so it's pinned at 3.x (binary `ec`) until mise is updated.
+- editorconfig-checker is pinned at 4.x (binary `editorconfig-checker`). The Makefile's `EC` also resolves the older `ec` name. The WSL mise was updated to 2026.10.7 on 2026-10-11.
 
 ## Git commits: Conventional Commits 1.0.0 (required)
 
