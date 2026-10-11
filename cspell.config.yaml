@@ -11,6 +11,7 @@ dictionaries:
   - companies
   - fullstack
 ignorePaths:
+  - LICENSE # verbatim Apache-2.0 text
   - "**/*.asc" # armored PGP keys
   - "**/*.lock"
   - config/home/.config/k9s/skins/**
