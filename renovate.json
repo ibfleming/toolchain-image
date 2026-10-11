@@ -59,6 +59,13 @@
       "semanticCommitScope": "actions"
     },
     {
+      "description": "Python stays one minor behind the newest release: minor bumps need dashboard approval",
+      "matchManagers": ["mise"],
+      "matchDepNames": ["python"],
+      "matchUpdateTypes": ["minor"],
+      "dependencyDashboardApproval": true
+    },
+    {
       "description": "Major bumps change the image contract (semver major): approve explicitly",
       "matchUpdateTypes": ["major"],
       "dependencyDashboardApproval": true
