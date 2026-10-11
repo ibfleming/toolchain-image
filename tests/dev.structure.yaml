@@ -15,21 +15,10 @@ metadataTest:
       isRegex: true
 
 commandTests:
-  - name: vscode has NO general sudo (policy and firewall must be enforceable)
+  - name: vscode has passwordless sudo (dev container convention)
     command: su
-    args: [vscode, -c, "sudo -n true 2>&1 || echo denied"]
-    expectedOutput: ["denied"]
-
-  - name: vscode's only sudo right is init-firewall without arguments
-    command: su
-    args: [vscode, -c, "sudo -n -l"]
-    expectedOutput: ['\(root\) NOPASSWD: /usr/local/sbin/init-firewall ""']
-    excludedOutput: ["ALL\\s*\\n?\\z", "NOPASSWD: ALL"]
-
-  - name: firewall is a no-op unless the container opts in
-    command: su
-    args: [vscode, -c, "toolchain-firewall"]
-    expectedOutput: ["toolchain-firewall: off"]
+    args: [vscode, -c, "sudo -n true && echo ok"]
+    expectedOutput: ["\\Aok\\n?\\z"]
 
   - name: vscode can read the managed policy (dirs must be searchable)
     command: su
@@ -96,11 +85,8 @@ commandTests:
       - "_k9s: function"
 
 fileExistenceTests:
-  - name: no blanket sudoers grant
+  - name: sudoers grant for vscode
     path: /etc/sudoers.d/vscode
-    shouldExist: false
-  - name: firewall-only sudoers grant
-    path: /etc/sudoers.d/toolchain-firewall
     shouldExist: true
     permissions: "-r--r-----"
   - name: claude binary is root-owned and not user-writable

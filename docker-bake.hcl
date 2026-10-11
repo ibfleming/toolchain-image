@@ -53,9 +53,6 @@ target "dev" {
     // Never put secrets here: anyone who can pull the image can read this label.
     "devcontainer.metadata" = jsonencode([{
       remoteUser = "vscode"
-      // Opt-in egress firewall: a no-op unless the repo sets containerEnv TOOLCHAIN_FIREWALL=1.
-      postStartCommand = "toolchain-firewall"
-      waitFor          = "postStartCommand"
       customizations = {
         vscode = {
           extensions = [

@@ -1,5 +1,5 @@
 # CI gate for every push to main and every PR: formatting/lint, Conventional Commits,
-# then build both images and run the full test suite (incl. firewall), spelling and the
+# then build both images and run the full test suite, spelling and the
 # vulnerability gate. Same `make` targets as on a laptop.
 name: ci
 

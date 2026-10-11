@@ -17,9 +17,9 @@ CI_IMG  := toolchain/ci:local
 DEV_IMG := toolchain/dev:local
 MISE_IMG := toolchain/mise:local
 
-.PHONY: help builder lint fmt spell lock firewall-snapshot pins scan check-commits
+.PHONY: help builder lint fmt spell lock pins scan check-commits
 .PHONY: build bake-print shell shell-live shell-kube-demo
-.PHONY: test test-structure test-smoke test-parity test-k9s test-starship test-firewall clean
+.PHONY: test test-structure test-smoke test-parity test-k9s test-starship clean
 
 help: ## List targets
   @grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -60,14 +60,6 @@ lock: builder ## Regenerate toolchain/{,dev/}mise.lock using the image's pinned 
       -e MISE_CACHE_DIR=/tmp/cache -e MISE_LOCKED=0 -e MISE_GLOBAL_CONFIG_FILE=/m/mise.toml \
       -v "$(CURDIR)/$$dir:/m" -w / $(MISE_IMG) mise lock --global --platform linux-x64; done
 
-firewall-snapshot: ## Refresh config/firewall/github-ipv4.txt (GitHub web/api/git IPv4 ranges) from the API
-  @{ echo "# GitHub web/api/git IPv4 ranges from https://api.github.com/meta, fetched $$(date -u +%F)."; \
-    echo "# Fallback for init-firewall when the API is unreachable. Refresh: make firewall-snapshot"; \
-    scripts/github-meta.sh; } > config/firewall/github-ipv4.txt.tmp
-  @test "$$(grep -vc '^#' config/firewall/github-ipv4.txt.tmp)" -gt 10
-  @mv config/firewall/github-ipv4.txt.tmp config/firewall/github-ipv4.txt
-  @echo "firewall-snapshot: $$(grep -vc '^#' config/firewall/github-ipv4.txt) ranges"
-
 pins: ## Recompute Dockerfile-pinned checksums (mise, zsh plugins) for the versions set there
   scripts/update-pins.sh
 
@@ -104,7 +96,7 @@ shell-kube-demo: ## shell-live with a fake multi-context kubeconfig (no cluster 
     -v "$(CURDIR)/tests/fixtures/kubeconfig.yaml:/fixtures/kubeconfig.yaml:ro" $(DEV_IMG) \
     bash -c 'cp /fixtures/kubeconfig.yaml /tmp/kubeconfig-demo && exec zsh -l'
 
-test: test-structure test-smoke test-parity test-k9s test-starship test-firewall ## Run all image tests
+test: test-structure test-smoke test-parity test-k9s test-starship ## Run all image tests
 
 test-structure:
   container-structure-test test --image $(CI_IMG)  --config tests/ci.structure.yaml
@@ -120,9 +112,6 @@ test-parity:
 test-starship: ## Render the starship k8s segment against the fake kubeconfig
   docker run --rm -u vscode -e TERM=xterm-256color -v "$(CURDIR)/tests:/tests:ro" $(DEV_IMG) \
     bash /tests/starship-kube.sh /tests/fixtures/kubeconfig.yaml
-
-test-firewall: ## Opt-in egress firewall: allow/deny, per-repo extras, tamper resistance (needs network)
-  tests/firewall.sh $(DEV_IMG)
 
 test-k9s: ## Validate the seeded k9s config against k9s's JSON schemas (needs network)
   docker run --rm -u vscode -v "$(CURDIR)/tests/k9s-config.sh:/t.sh:ro" \
