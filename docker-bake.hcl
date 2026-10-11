@@ -107,9 +107,12 @@ target "dev" {
 
 group "default" { targets = ["ci", "dev"] }
 
-// Local iteration: load into the image store under stable local tags.
+// Local iteration: load into the image store under stable local tags. Attestations are
+// disabled explicitly: the classic Docker image store (e.g. GitHub runners) cannot load the
+// manifest list they create. Release builds (`ci`, `dev` targets) keep SBOM + provenance.
 target "_local" {
   output = ["type=docker"]
+  attest = ["type=provenance,disabled=true", "type=sbom,disabled=true"]
 }
 target "ci-local" {
   inherits = ["ci", "_local"]

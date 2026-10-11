@@ -33,8 +33,11 @@ builder: ## Create the docker-container buildx builder (keeps attestations)
 SH_SCRIPTS := $(wildcard scripts/*.sh tests/*.sh)
 ZSH_FILES := config/zsh/zshrc $(wildcard config/zsh/*/*.zsh)
 
+# editorconfig-checker's binary is `ec` or `editorconfig-checker` depending on the mise registry.
+EC := $(or $(shell command -v editorconfig-checker 2>/dev/null),$(shell command -v ec 2>/dev/null),ec)
+
 lint: ## Check formatting + lint on every file (CI gate; `make fmt` fixes most of it)
-  ec
+  $(EC)
   shfmt --diff $(SH_SCRIPTS) $(ZSH_FILES)
   shellcheck $(SH_SCRIPTS)
   RUST_LOG=warn taplo fmt --check
