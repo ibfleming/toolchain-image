@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   release:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: write # tag (scheduled runs) + GitHub Release
       packages: write # push staging/release images, registry cache
