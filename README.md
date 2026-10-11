@@ -23,7 +23,7 @@ Exact versions are in [`toolchain/mise.toml`](toolchain/mise.toml) and
 [`toolchain/dev/mise.toml`](toolchain/dev/mise.toml), and in every release's notes.
 The `dev` image is opinionated but fully overridable: see [Customizing](docs/customizing.md).
 
-**Image contract**
+### Image contract
 
 - `ci`: root as the default user, no `ENTRYPOINT` or `WORKDIR`, glibc, with `bash`, `grep`,
   `sudo`, `which` and `groupadd`. These are the requirements of GitHub Actions and Azure DevOps
@@ -157,7 +157,8 @@ gate, before it's promoted:
 
 - **Commits and PR titles** follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/).
   PRs are squash-merged, so the PR title becomes the commit on `main`.
-- **Formatting:** spaces only (the Makefile included), 120 columns, LF line endings. Run
+- **Formatting:** spaces only (the Makefile included), 120 columns, LF line endings. Markdown is
+  formatted by Prettier (tables aligned, code samples untouched) and checked by markdownlint. Run
   `make fmt`.
 - **Before you push:** `make lint test`. CI runs the same targets.
 
@@ -171,6 +172,11 @@ gate, before it's promoted:
   repositories.
 - Downloads at build time are checksum- or signature-verified. Build secrets are passed as
   BuildKit secrets, never as build arguments.
+
+## License
+
+[Apache License 2.0](LICENSE). Vendored third-party files keep their own notices (for example
+the k9s skin, also Apache-2.0).
 
 ## Documentation
 

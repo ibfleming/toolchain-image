@@ -66,7 +66,7 @@ Override any of them per repository:
 The login shell is zsh. `~/.zshrc` is a one-line loader for the shared, read-only config in
 `/usr/local/share/toolchain/zsh/`:
 
-```
+```text
 conf.d/     environment, history, options, theme, key bindings, completion, fzf
 aliases/    general, git, kubernetes, tools
 functions/  general, git

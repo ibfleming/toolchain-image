@@ -42,12 +42,14 @@ lint: ## Check formatting + lint on every file (CI gate; `make fmt` fixes most o
   shellcheck $(SH_SCRIPTS)
   RUST_LOG=warn taplo fmt --check
   prettier --check --log-level warn .
+  markdownlint-cli2
   hadolint Dockerfile
 
-fmt: ## Apply the formatters in place (shfmt, taplo, prettier); settings come from .editorconfig
+fmt: ## Apply formatters in place (shfmt, taplo, prettier, markdownlint fixes); policy from .editorconfig
   shfmt --write $(SH_SCRIPTS) $(ZSH_FILES)
   RUST_LOG=warn taplo fmt
   prettier --write --log-level warn .
+  markdownlint-cli2 --fix
 
 spell: ## Spell-check the repo with cspell (runs in the dev image; config: cspell.config.yaml)
   docker run --rm -u vscode -e NPM_CONFIG_UPDATE_NOTIFIER=false -v "$(CURDIR):/w:ro" -w /w $(DEV_IMG) \
