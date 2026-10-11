@@ -1,6 +1,6 @@
 # Release: build once, test the exact pushed digests, gate, promote by digest copy, sign,
 # verify, publish a GitHub Release. Runs on a vX.Y.Z tag, weekly (patch rebuild picks up
-# Debian security updates), or manually. See .claude/design-primary.md §5-6.
+# Debian security updates), or manually. See docs/design/image-family-and-supply-chain.md §5-6.
 name: release
 
 on:

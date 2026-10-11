@@ -1,5 +1,9 @@
 # One Image Family, Two Front Doors: A Reference Design for Shared CI/CD Builder and Dev Container Images (October 2026)
 
+> **Design record.** Original research behind this project (October 2026), kept for its
+> reasoning and sources. It was written for one developer's setup, and parts are superseded:
+> see [the design index](README.md) for where the implementation deliberately differs.
+
 The best-practice design is **one Dockerfile with named multi-stage targets, `base → ci → dev`, where `dev` is built `FROM ci`**. It is built from a single pinned version manifest in one `docker buildx bake` run, then scanned, given an SBOM and provenance, signed, and published by digest. CI jobs consume `ci`. Dev containers consume `dev` through a thin `devcontainer.json`. The production runtime image is kept completely separate and minimal. Because `dev` inherits from `ci`, the CI toolchain is a strict subset of the dev toolchain by construction, not by convention. That is the only reliable way to make "works in the devcontainer" imply "works in CI".
 
 ## TL;DR

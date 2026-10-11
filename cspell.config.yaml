@@ -15,7 +15,8 @@ ignorePaths:
   - "**/*.lock"
   - config/home/.config/k9s/skins/**
   - .claude/.scratch/**
-  - .claude/design-*.md
+  - docs/design/image-family-and-supply-chain.md # research records (quotes, sources)
+  - docs/design/dev-environment-and-claude-code.md
 words:
   - ahmetb
   - ajeetdsouza
@@ -113,3 +114,5 @@ words:
   - dnsmasq
   - commitlint
   - striptags
+  - Sigstore
+  - Rekor

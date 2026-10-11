@@ -1,4 +1,6 @@
 # Generated or vendored, or not ours to reformat (.gitignore'd paths are skipped automatically).
 **/*.lock
 config/home/.config/k9s/skins/
-.claude/design-*.md
+# Design research records: keep their original formatting
+docs/design/image-family-and-supply-chain.md
+docs/design/dev-environment-and-claude-code.md
