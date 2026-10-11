@@ -50,11 +50,18 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
+      - name: Free disk space (images are ~2 GB each; Trivy exports them again)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
       - name: Build ci + dev (local)
         env:
           GITHUB_TOKEN: ${{ github.token }} # BuildKit secret for mise downloads, never a build arg
           REVISION: ${{ github.sha }}
-        run: make build
+        run: |
+          make build
+          docker buildx prune --builder toolchain --all --force >/dev/null # images are loaded; drop build cache
+          df -h /
       - name: Test
         run: make test
       - name: Spelling

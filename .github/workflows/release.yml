@@ -38,6 +38,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
+      - name: Free disk space (images are ~2 GB each; Trivy exports them again)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
       - name: Version
         id: version
         run: scripts/release-version.sh | tee -a "$GITHUB_OUTPUT"
@@ -54,6 +59,7 @@ jobs:
           ci="$(jq -er '.ci["containerimage.digest"]' bake-meta.json)"
           dev="$(jq -er '.dev["containerimage.digest"]' bake-meta.json)"
           { echo "CI_DIGEST=$ci"; echo "DEV_DIGEST=$dev"; } >> "$GITHUB_ENV"
+          docker buildx prune --builder toolchain --all --force >/dev/null # pushed; drop local build cache
 
       - name: Test the pushed digests
         run: |

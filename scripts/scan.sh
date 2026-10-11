@@ -11,17 +11,22 @@
 # Usage: scan.sh <image-ref>    (exit 1 = gate failed)
 set -euo pipefail
 img="${1:?image ref}"
-common=(--quiet --scanners vuln --ignore-unfixed)
+# One Trivy pass per image (each pass exports the whole image, ~2 GB); the gate is computed
+# from the JSON, so policy and report always agree.
+report="$(trivy image --quiet --scanners vuln --ignore-unfixed --severity HIGH,CRITICAL --format json "$img")"
 
+blocking="$(jq -r '
+  [.Results[]? | select(.Vulnerabilities) | .Class as $c | .Target as $t | .Vulnerabilities[]
+    | select(.Severity == "CRITICAL" or $c == "os-pkgs")
+    | "\(.Severity)\t\(.VulnerabilityID)\t\(.PkgName) \(.InstalledVersion) -> \(.FixedVersion)\t\($t)"]
+  | unique | .[]' <<<"$report")"
 gate=0
-if ! trivy image "${common[@]}" --severity CRITICAL --exit-code 1 --format table "$img" >&2; then
+if [[ -n $blocking ]]; then
   gate=1
-fi
-if ! trivy image "${common[@]}" --pkg-types os --severity HIGH,CRITICAL --exit-code 1 --format table "$img" >&2; then
-  gate=1
+  echo "scan: BLOCKING findings in $img:" >&2
+  echo "$blocking" >&2
 fi
 
-report="$(trivy image "${common[@]}" --severity HIGH,CRITICAL --format json "$img")"
 echo "#### \`$img\`"
 echo
 if [[ $gate -eq 0 ]]; then
