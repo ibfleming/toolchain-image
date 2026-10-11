@@ -11,8 +11,14 @@
     // Per-project Claude Code state (CLAUDE_CONFIG_DIR): sessions, history, /config edits.
     "source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
     // zsh history across rebuilds.
-    "source=zsh-state-${devcontainerId},target=/home/vscode/.local/state/zsh,type=volume"
+    "source=zsh-state-${devcontainerId},target=/home/vscode/.local/state/zsh,type=volume",
+    // Personal dotfiles (Claude config, ...), READ-ONLY from the WSL clone: no network or
+    // GitHub credentials needed in the container, and nothing in it can modify them.
+    "source=${localEnv:HOME}/repos/dotfiles,target=/home/vscode/.dotfiles,type=bind,readonly"
   ],
+
+  // Re-applied on every start (idempotent), so dotfiles edits in WSL need no rebuild.
+  "postStartCommand": "/home/vscode/.dotfiles/install.sh",
 
   // Claude Code auth: a `claude setup-token` token kept in a 0600 file in WSL, outside any
   // repo, containing CLAUDE_CODE_OAUTH_TOKEN=<token>. Container creation fails if it's missing.
