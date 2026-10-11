@@ -1,0 +1,29 @@
+# Dev-only tools, installed into the `dev` image only (never `ci`).
+# Same rules as ../mise.toml: exact versions, `make lock` regenerates mise.lock.
+
+[tools]
+# --- shell + prompt
+"aqua:starship/starship" = "1.26.0"
+"aqua:junegunn/fzf" = "0.74.4"
+"aqua:ajeetdsouza/zoxide" = "0.10.0"
+"aqua:sharkdp/vivid" = "0.11.1"
+
+# --- modern coreutils
+"aqua:eza-community/eza" = "0.23.5"
+"aqua:sharkdp/bat" = "0.26.1"
+"aqua:sharkdp/fd" = "10.5.0"
+"aqua:BurntSushi/ripgrep" = "15.2.0"
+
+# --- git
+"aqua:dandavison/delta" = "0.20.1"
+"aqua:jesseduffield/lazygit" = "0.66.0"
+
+# --- kubernetes
+"aqua:ahmetb/kubectx" = "0.11.0"
+"aqua:ahmetb/kubectx/kubens" = "0.11.0"
+
+# --- editor
+"aqua:neovim/neovim" = "0.12.6"
+
+[settings]
+lockfile = true

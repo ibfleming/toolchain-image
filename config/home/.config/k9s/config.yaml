@@ -1,0 +1,45 @@
+# editorconfig-checker-disable-next-line
+# yaml-language-server: $schema=https://raw.githubusercontent.com/derailed/k9s/v0.51.0/internal/config/json/schemas/k9s.json
+# k9s settings for the dev image. Validated against k9s's schema in `make test`.
+k9s:
+  liveViewAutoRefresh: true
+  refreshRate: 2
+  apiServerTimeout: 15s
+  maxConnRetry: 5
+  readOnly: false # flip per session with `k9s --readonly` against prod
+  noExitOnCtrlC: true # ctrl-c won't drop you out by accident; use :q
+  skipLatestRevCheck: true # no update phone-home; the version is pinned by the image
+  disablePodCounting: false
+  defaultView: pods
+  ui:
+    skin: one-dark
+    reactive: true # hot-reload config and skin edits
+    enableMouse: false # keep terminal text selection working
+    headless: false
+    logoless: true
+    crumbsless: false
+    splashless: true
+    noIcons: false
+    defaultsToFullScreen: false
+  logger:
+    tail: 500
+    buffer: 10000
+    sinceSeconds: 900 # last 15m on open; 0 for everything
+    textWrap: false
+    showTime: true
+    disableAutoscroll: false
+  thresholds:
+    cpu:
+      critical: 90
+      warn: 70
+    memory:
+      critical: 90
+      warn: 70
+  shellPod:
+    image: busybox:1.37
+    namespace: default
+    limits:
+      cpu: 100m
+      memory: 100Mi
+  imageScans:
+    enable: false

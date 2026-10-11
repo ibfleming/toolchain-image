@@ -1,0 +1,3 @@
+# Prettier formats YAML, JSON/JSONC and Markdown. Indent, line endings and printWidth (120)
+# come from .editorconfig; only Prettier-specific choices live here.
+proseWrap: preserve # never reflow Markdown paragraphs

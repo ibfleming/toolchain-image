@@ -1,0 +1,25 @@
+# Git aliases (short, unsurprising; no destructive one-letter aliases).
+(($+commands[git])) || return 0
+
+alias g='git'
+alias gs='git status -sb'
+alias ga='git add'
+alias gaa='git add --all'
+alias gap='git add --patch'
+alias gc='git commit -v'
+alias gca='git commit -v --amend'
+alias gd='git diff'
+alias gds='git diff --staged'
+alias gf='git fetch --all --prune'
+alias gl='git pull --rebase --autostash'
+alias gp='git push'
+alias gpf='git push --force-with-lease'
+alias gsw='git switch'
+alias gswc='git switch -c'
+alias gb='git branch -vv'
+alias gst='git stash push'
+alias gstp='git stash pop'
+alias glo='git log --oneline --graph --decorate -20'
+alias gloa='git log --oneline --graph --decorate --all'
+
+(($+commands[lazygit])) && alias lg='lazygit'

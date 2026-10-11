@@ -1,0 +1,5 @@
+failure-threshold: warning
+ignored:
+  # Unpinned apt packages: policy is to pin the base image by digest and keep apt
+  # minimal; versioned toolchain items live in toolchain/mise.toml instead.
+  - DL3008

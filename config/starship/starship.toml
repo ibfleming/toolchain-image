@@ -1,0 +1,231 @@
+# Shared starship prompt for the dev image.
+# Derived from starship's `gruvbox-rainbow` preset (`starship preset gruvbox-rainbow`, the
+# same base as the WSL ~/.config/starship.toml). Only the colors changed: a one-dark palette,
+# with dark text on the bright segments, plus a kubernetes segment (purple; red for prod contexts).
+# Iterate live with `make shell-live`; try the k8s segment with `make shell-kube-demo`.
+# Requires a Nerd Font in the terminal (powerline separators and icons).
+"$schema" = 'https://starship.rs/config-schema.json'
+
+format = """
+[](color_orange)\
+$os\
+$username\
+[](bg:color_yellow fg:color_orange)\
+$directory\
+[](fg:color_yellow bg:color_aqua)\
+$git_branch\
+$git_status\
+[](fg:color_aqua bg:color_blue)\
+$c\
+$cpp\
+$rust\
+$golang\
+$nodejs\
+$bun\
+$php\
+$java\
+$kotlin\
+$haskell\
+$python\
+[](fg:color_blue bg:color_bg3)\
+$docker_context\
+$conda\
+$pixi\
+$kubernetes\
+[](fg:color_bg3 bg:color_bg1)\
+$time\
+[ ](fg:color_bg1)\
+$line_break$character"""
+
+palette = 'one_dark'
+
+# One Dark (Atom). Segment order mirrors gruvbox-rainbow: orange > yellow > cyan > blue > greys.
+[palettes.one_dark]
+color_fg0 = '#abb2bf'    # light text, used on the grey segments
+color_bg0 = '#282c34'    # dark text, used on the bright segments (pastels need dark text)
+color_bg1 = '#3e4452'
+color_bg3 = '#4b5263'
+color_blue = '#61afef'
+color_aqua = '#56b6c2'   # one-dark cyan; key name kept from the preset
+color_cyan = '#56b6c2'
+color_green = '#98c379'
+color_orange = '#d19a66'
+color_purple = '#c678dd'
+color_red = '#e06c75'
+color_yellow = '#e5c07b'
+
+[os]
+disabled = false
+style = "bg:color_orange fg:color_bg0"
+
+[os.symbols]
+Windows = "󰍲"
+Ubuntu = "󰕈"
+SUSE = ""
+Raspbian = "󰐿"
+Mint = "󰣭"
+Macos = "󰀵"
+Manjaro = ""
+Linux = "󰌽"
+Gentoo = "󰣨"
+Fedora = "󰣛"
+Alpine = ""
+Amazon = ""
+Android = ""
+AOSC = ""
+Arch = "󰣇"
+Artix = "󰣇"
+EndeavourOS = ""
+CentOS = ""
+Debian = "󰣚"
+Redhat = "󱄛"
+RedHatEnterprise = "󱄛"
+Pop = ""
+
+[username]
+show_always = true
+style_user = "bg:color_orange fg:color_bg0"
+style_root = "bg:color_orange fg:color_bg0"
+format = '[ $user ]($style)'
+
+[directory]
+style = "fg:color_bg0 bg:color_yellow"
+format = "[ $path ]($style)"
+truncation_length = 3
+truncation_symbol = "…/"
+
+[directory.substitutions]
+"Documents" = "󰈙 "
+"Downloads" = " "
+"Music" = "󰝚 "
+"Pictures" = " "
+"Developer" = "󰲋 "
+
+[git_branch]
+symbol = ""
+style = "bg:color_aqua"
+format = '[[ $symbol $branch ](fg:color_bg0 bg:color_aqua)]($style)'
+
+[git_status]
+style = "bg:color_aqua"
+format = '[[($all_status$ahead_behind )](fg:color_bg0 bg:color_aqua)]($style)'
+
+[nodejs]
+symbol = ""
+style = "bg:color_blue"
+format = '[[ $symbol( $version) ](fg:color_bg0 bg:color_blue)]($style)'
+
+[bun]
+symbol = ""
+style = "bg:color_blue"
+format = '[[ $symbol( $version) ](fg:color_bg0 bg:color_blue)]($style)'
+
+[c]
+symbol = " "
+style = "bg:color_blue"
+format = '[[ $symbol( $version) ](fg:color_bg0 bg:color_blue)]($style)'
+
+[cpp]
+symbol = " "
+style = "bg:color_blue"
+format = '[[ $symbol( $version) ](fg:color_bg0 bg:color_blue)]($style)'
+
+[rust]
+symbol = ""
+style = "bg:color_blue"
+format = '[[ $symbol( $version) ](fg:color_bg0 bg:color_blue)]($style)'
+
+[golang]
+symbol = ""
+style = "bg:color_blue"
+format = '[[ $symbol( $version) ](fg:color_bg0 bg:color_blue)]($style)'
+
+[php]
+symbol = ""
+style = "bg:color_blue"
+format = '[[ $symbol( $version) ](fg:color_bg0 bg:color_blue)]($style)'
+
+[java]
+symbol = ""
+style = "bg:color_blue"
+format = '[[ $symbol( $version) ](fg:color_bg0 bg:color_blue)]($style)'
+
+[kotlin]
+symbol = ""
+style = "bg:color_blue"
+format = '[[ $symbol( $version) ](fg:color_bg0 bg:color_blue)]($style)'
+
+[haskell]
+symbol = ""
+style = "bg:color_blue"
+format = '[[ $symbol( $version) ](fg:color_bg0 bg:color_blue)]($style)'
+
+[python]
+symbol = ""
+style = "bg:color_blue"
+format = '[[ $symbol( $version) ](fg:color_bg0 bg:color_blue)]($style)'
+
+# Current kube context + namespace. Reads kubeconfig only (never contacts the cluster);
+# hidden when there is no current context. First matching `contexts` entry wins.
+#
+# The segment draws its own separators so they always match its color (red for prod):
+# `style` holds ONLY the segment color, as a foreground; the format derives the rest:
+#   lead  []($style bg:color_bg3 inverted)  -> grey arrow on segment color
+#   body  [ ... ]($style bg:color_bg0 inverted) -> dark text on segment color
+#   tail  []($style bg:color_bg3)           -> segment arrow back onto grey
+# It sits inside the grey group (after pixi), so the main format's separators are unchanged
+# whether or not the segment is shown.
+[kubernetes]
+disabled = false
+symbol = "󱃾"
+style = "fg:color_purple"
+format = """\
+[]($style bg:color_bg3 inverted)\
+[ $symbol $context( \\($namespace\\)) ]($style bg:color_bg0 inverted)\
+[]($style bg:color_bg3)"""
+
+# Production ("prod", "production", "prd" anywhere): red segment, bold text.
+[[kubernetes.contexts]]
+context_pattern = ".*(prod|prd).*"
+style = "fg:color_red bold"
+
+# EKS: arn:aws:eks:<region>:<account>:cluster/<name>  ->  eks:<name>
+[[kubernetes.contexts]]
+context_pattern = 'arn:aws:eks:[\w-]+:\d+:cluster/(?P<cluster>[\w-]+)'
+context_alias = "eks:$cluster"
+
+# GKE: gke_<project>_<location>_<name>  ->  gke:<name>
+[[kubernetes.contexts]]
+context_pattern = 'gke_[^_]+_[^_]+_(?P<cluster>.+)'
+context_alias = "gke:$cluster"
+
+[docker_context]
+symbol = ""
+style = "bg:color_bg3"
+format = '[[ $symbol( $context) ](fg:color_cyan bg:color_bg3)]($style)'
+
+[conda]
+style = "bg:color_bg3"
+format = '[[ $symbol( $environment) ](fg:color_cyan bg:color_bg3)]($style)'
+
+[pixi]
+style = "bg:color_bg3"
+format = '[[ $symbol( $version)( $environment) ](fg:color_fg0 bg:color_bg3)]($style)'
+
+[time]
+disabled = false
+time_format = "%R"
+style = "bg:color_bg1"
+format = '[[  $time ](fg:color_fg0 bg:color_bg1)]($style)'
+
+[line_break]
+disabled = false
+
+[character]
+disabled = false
+success_symbol = '[](bold fg:color_green)'
+error_symbol = '[](bold fg:color_red)'
+vimcmd_symbol = '[](bold fg:color_green)'
+vimcmd_replace_one_symbol = '[](bold fg:color_purple)'
+vimcmd_replace_symbol = '[](bold fg:color_purple)'
+vimcmd_visual_symbol = '[](bold fg:color_yellow)'

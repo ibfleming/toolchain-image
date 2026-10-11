@@ -1,0 +1,13 @@
+# Agent scratch space (disposable, see .claude/CLAUDE.md)
+.claude/.scratch/
+
+# Personal Claude Code overrides
+.claude/settings.local.json
+CLAUDE.local.md
+
+# Build outputs
+bake-meta.json
+*.sbom.json
+
+# Editor settings stay personal; repo formatting policy lives in .editorconfig
+.vscode/

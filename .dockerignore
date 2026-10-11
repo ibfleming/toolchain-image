@@ -1,0 +1,5 @@
+# Build context is only what the Dockerfile COPYs.
+*
+!toolchain/
+!scripts/
+!config/

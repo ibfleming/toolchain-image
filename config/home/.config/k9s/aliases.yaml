@@ -1,0 +1,50 @@
+# editorconfig-checker-disable-next-line
+# yaml-language-server: $schema=https://raw.githubusercontent.com/derailed/k9s/v0.51.0/internal/config/json/schemas/aliases.json
+# Command aliases (`:dp`, `:sec`, ...). Built-in kubectl short names (po, svc, ns, ...) still work.
+# CRD aliases are harmless on clusters without that CRD.
+aliases:
+  # --- workloads
+  dp: apps/v1/deployments
+  sts: apps/v1/statefulsets
+  ds: apps/v1/daemonsets
+  rs: apps/v1/replicasets
+  jo: batch/v1/jobs
+  cj: batch/v1/cronjobs
+  hpa: autoscaling/v2/horizontalpodautoscalers
+  pdb: policy/v1/poddisruptionbudgets
+
+  # --- config + storage
+  cm: v1/configmaps
+  sec: v1/secrets
+  pvc: v1/persistentvolumeclaims
+  pv: v1/persistentvolumes
+  sc: storage.k8s.io/v1/storageclasses
+
+  # --- networking
+  svc: v1/services
+  ep: discovery.k8s.io/v1/endpointslices
+  ing: networking.k8s.io/v1/ingresses
+  np: networking.k8s.io/v1/networkpolicies
+  gw: gateway.networking.k8s.io/v1/gateways
+  hr: gateway.networking.k8s.io/v1/httproutes
+
+  # --- cluster + rbac
+  no: v1/nodes
+  ev: v1/events
+  sa: v1/serviceaccounts
+  ro: rbac.authorization.k8s.io/v1/roles
+  rb: rbac.authorization.k8s.io/v1/rolebindings
+  cr: rbac.authorization.k8s.io/v1/clusterroles
+  crb: rbac.authorization.k8s.io/v1/clusterrolebindings
+  crd: apiextensions.k8s.io/v1/customresourcedefinitions
+  quota: v1/resourcequotas
+  lr: v1/limitranges
+
+  # --- gitops + certs (CRDs)
+  app: argoproj.io/v1alpha1/applications
+  appset: argoproj.io/v1alpha1/applicationsets
+  ks: kustomize.toolkit.fluxcd.io/v1/kustomizations
+  hrel: helm.toolkit.fluxcd.io/v2/helmreleases
+  cert: cert-manager.io/v1/certificates
+  iss: cert-manager.io/v1/issuers
+  ciss: cert-manager.io/v1/clusterissuers

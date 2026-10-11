@@ -1,0 +1,59 @@
+# Contract for the `dev` image. Runs in addition to the ci contract's tool checks
+# (parity.sh enforces ci ⊆ dev for the toolchain itself).
+schemaVersion: 2.0.0
+
+metadataTest:
+  entrypoint: []
+  labels:
+    - key: devcontainer.metadata
+      value: '.*"remoteUser":"vscode".*'
+      isRegex: true
+
+commandTests:
+  - name: vscode has passwordless sudo
+    command: su
+    args: ["vscode", "-c", "sudo -n true && echo ok"]
+    expectedOutput: ["\\Aok\\n?\\z"]
+
+  - name: dev conveniences present
+    command: which
+    args: [zsh, gdb, less, ssh, ps, vi]
+
+  - name: exactly one regular user, vscode at 1000:1000
+    command: bash
+    args: ["-c", "grep -E '^[^:]*:[^:]*:([1-9][0-9]{3}|[1-5][0-9]{4}):' /etc/passwd | cut -d: -f1,3,4"]
+    expectedOutput: ["\\Avscode:1000:1000\\n?\\z"]
+
+  - name: everything in the vscode home is owned by vscode
+    command: find
+    args: [/home/vscode, -not, -user, vscode]
+    excludedOutput: [".+"]
+
+  - name: login shell is zsh
+    command: getent
+    args: [passwd, vscode]
+    expectedOutput: [":/usr/bin/zsh\\n?\\z"]
+
+  - name: interactive zsh starts cleanly as vscode (no errors on stderr)
+    command: su
+    args: [vscode, -c, "zsh -i -c 'print -r -- ok'"]
+    expectedOutput: ["\\Aok\\n?\\z"]
+    excludedError: [".+"]
+
+  - name: zsh plugins and generated completions are loaded
+    command: su
+    args:
+      [vscode, -c, "zsh -i -c 'whence -w _zsh_highlight _zsh_autosuggest_start fzf-tab-complete _kubectl _helm _k9s'"]
+    expectedOutput:
+      - "_zsh_highlight: function"
+      - "_zsh_autosuggest_start: function"
+      - "fzf-tab-complete: function"
+      - "_kubectl: function"
+      - "_helm: function"
+      - "_k9s: function"
+
+fileExistenceTests:
+  - name: sudoers grant
+    path: /etc/sudoers.d/vscode
+    shouldExist: true
+    permissions: "-r--r-----"

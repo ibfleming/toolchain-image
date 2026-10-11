@@ -1,0 +1,45 @@
+# EditorConfig: https://editorconfig.org
+# Formatting policy for every file in this repo. Enforced by `make lint` (editorconfig-checker),
+# applied while typing by editors with EditorConfig support (VS Code: EditorConfig.EditorConfig).
+#
+# Policies: spaces only, never tabs, in every file type (the Makefile included; it uses
+# `.RECIPEPREFIX` so recipes are space-indented); 2-space indent (Python 4); max 120 columns.
+# shfmt and prettier read this file, so indent and width are defined once, here.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+max_line_length = 120
+
+# Python: PEP 8 / ruff format default.
+[*.py]
+indent_size = 4
+
+# Shell (bash scripts and the zsh config): shfmt reads these keys.
+# NB: a section containing "/" anywhere is anchored to this directory as a whole, so mixed
+# lists use `**.ext` (any depth) rather than `*.ext` (which would then mean root-only).
+[{**.sh,**.zsh,config/zsh/zshrc}]
+switch_case_indent = true
+binary_next_line = true
+
+[*.sh]
+shell_variant = bash
+
+[{**.zsh,config/zsh/zshrc}]
+shell_variant = zsh
+
+# Markdown: indentation inside lists and code blocks is semantic (e.g. 3-space ordered-list
+# continuation), so only the even-width check is relaxed. Still spaces only, never tabs.
+# Long lines are fine in prose, tables and links.
+[*.md]
+indent_size = unset
+max_line_length = off
+
+# Generated or vendored: checksums/URLs/upstream formatting.
+[{**.lock,config/home/.config/k9s/skins/*.yaml}]
+max_line_length = off

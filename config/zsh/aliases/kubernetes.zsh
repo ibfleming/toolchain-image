@@ -1,0 +1,28 @@
+# Kubernetes / Helm aliases.
+(($+commands[kubectl])) || return 0
+
+alias k='kubectl'
+alias kg='kubectl get'
+alias kga='kubectl get all'
+alias kgp='kubectl get pods'
+alias kgpw='kubectl get pods -o wide --watch'
+alias kgs='kubectl get svc'
+alias kgd='kubectl get deploy'
+alias kgn='kubectl get nodes -o wide'
+alias kgi='kubectl get ingress'
+alias kge='kubectl get events --sort-by=.lastTimestamp'
+alias kd='kubectl describe'
+alias kdp='kubectl describe pod'
+alias kl='kubectl logs -f --tail=200'
+alias kex='kubectl exec -it'
+alias ka='kubectl apply -f'
+alias kdel='kubectl delete'
+alias kpf='kubectl port-forward'
+alias krr='kubectl rollout restart'
+alias krs='kubectl rollout status'
+alias ktop='kubectl top pods --sort-by=memory'
+
+(($+commands[kubectx])) && alias kctx='kubectx'
+(($+commands[kubens])) && alias kns='kubens'
+(($+commands[k9s])) && alias k9='k9s'
+(($+commands[helm])) && alias h='helm' hl='helm list -A'

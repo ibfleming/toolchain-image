@@ -1,0 +1,62 @@
+# Platform contract for the `ci` image (GitHub Actions, Azure DevOps, GitLab, Jenkins).
+# Tool *versions* are not listed here; tests/smoke.sh and tests/parity.sh derive them from the manifest.
+# NOTE: container-structure-test expands $VARS in args, so commands here avoid `$` entirely.
+schemaVersion: 2.0.0
+
+metadataTest:
+  entrypoint: []
+  workdir: ""
+  user: ""
+  envVars:
+    # Language runtimes must not self-download toolchains (parity with the manifest).
+    - key: GOTOOLCHAIN
+      value: local
+    - key: UV_PYTHON_DOWNLOADS
+      value: never
+
+commandTests:
+  - name: default user is root (GHA/Azure DevOps container jobs)
+    command: id
+    args: ["-u"]
+    expectedOutput: ["\\A0\\n?\\z"]
+
+  - name: required CI binaries present
+    command: which
+    args: [bash, sh, grep, sed, awk, sudo, which, groupadd, useradd, git, curl, tar, gzip, make, jq]
+
+  - name: glibc
+    command: ldd
+    args: ["--version"]
+    expectedOutput: ["GNU libc|GLIBC"]
+
+  - name: exactly one regular user, vscode at 1000:1000
+    command: bash
+    args: ["-c", "grep -E '^[^:]*:[^:]*:([1-9][0-9]{3}|[1-5][0-9]{4}):' /etc/passwd | cut -d: -f1,3,4"]
+    expectedOutput: ["\\Avscode:1000:1000\\n?\\z"]
+
+  - name: no mise shims on PATH (tools are fixed symlinks)
+    command: printenv
+    args: [PATH]
+    excludedOutput: ["mise/shims"]
+
+  - name: C/C++ toolchain builds with gcc, clang and cmake+ninja
+    command: bash
+    args:
+      - -c
+      - |
+        set -e; mkdir -p /tmp/cxx && cd /tmp/cxx
+        printf '#include <iostream>\nint main(){std::cout<<"cpp-ok";}\n' > main.cpp
+        printf 'cmake_minimum_required(VERSION 3.20)\nproject(t CXX)\nadd_executable(t main.cpp)\n' > CMakeLists.txt
+        g++ -O2 main.cpp -o g && ./g && echo
+        clang++ -fuse-ld=lld main.cpp -o c && ./c && echo
+        CXX=clang++ cmake -S . -B build -G Ninja >/dev/null && cmake --build build >/dev/null && ./build/t && echo
+    expectedOutput: ["\\Acpp-ok\\ncpp-ok\\ncpp-ok\\n?\\z"]
+
+fileExistenceTests:
+  - name: print-versions
+    path: /usr/local/bin/print-versions
+    shouldExist: true
+    permissions: "-rwxr-xr-x"
+  - name: no dev sudoers grant in ci
+    path: /etc/sudoers.d/vscode
+    shouldExist: false

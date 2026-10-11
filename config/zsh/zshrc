@@ -1,0 +1,36 @@
+#!/usr/bin/env zsh
+# toolchain zsh: modular interactive config baked into the `dev` image.
+# Structure inspired by smeltery/zsh (zensh); this is an independent implementation.
+#
+# Load order:
+#   conf.d/*.zsh     environment, history, options, theme, keys, completion, fzf
+#   aliases/*.zsh    aliases (each file guards on the tools it needs)
+#   functions/*.zsh  shell functions
+#   user overrides   $XDG_CONFIG_HOME/zsh/conf.d/*.zsh, then $XDG_CONFIG_HOME/zsh/local.zsh
+#   post.d/*.zsh     prompt, widget-wrapping plugins, zoxide (these must come last)
+#
+# Skip any module from ~/.zshrc *before* sourcing this file, by its path without .zsh:
+#   TOOLCHAIN_ZSH_SKIP=(aliases/git post.d/20-plugins)
+#
+# Modules are sourced from a top-level loop, never from inside a function: a `typeset`
+# or `local` in a module would otherwise become function-local (e.g. an empty $path).
+
+TOOLCHAIN_ZSH="${${(%):-%x}:A:h}"
+typeset -ga TOOLCHAIN_ZSH_SKIP
+: "${TOOLCHAIN_ZSH_PLUGINS:=/usr/local/share/zsh-plugins}"
+: "${XDG_CONFIG_HOME:=$HOME/.config}"
+
+typeset -a _tc_modules=(
+  "$TOOLCHAIN_ZSH"/conf.d/*.zsh(N)
+  "$TOOLCHAIN_ZSH"/aliases/*.zsh(N)
+  "$TOOLCHAIN_ZSH"/functions/*.zsh(N)
+  "$XDG_CONFIG_HOME"/zsh/conf.d/*.zsh(N)
+  "$XDG_CONFIG_HOME"/zsh/local.zsh(N)
+  "$TOOLCHAIN_ZSH"/post.d/*.zsh(N)
+)
+
+for _tc_module in $_tc_modules; do
+  ((${TOOLCHAIN_ZSH_SKIP[(Ie)${${_tc_module#$TOOLCHAIN_ZSH/}%.zsh}]})) && continue
+  source "$_tc_module"
+done
+unset _tc_module _tc_modules

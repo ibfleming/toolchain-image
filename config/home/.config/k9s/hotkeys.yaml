@@ -1,0 +1,36 @@
+# editorconfig-checker-disable-next-line
+# yaml-language-server: $schema=https://raw.githubusercontent.com/derailed/k9s/v0.51.0/internal/config/json/schemas/hotkeys.json
+# Shift+digit jumps to the most-used views.
+hotKeys:
+  shift-0:
+    shortCut: Shift-0
+    description: Pods
+    command: pods
+  shift-1:
+    shortCut: Shift-1
+    description: Deployments
+    command: dp
+  shift-2:
+    shortCut: Shift-2
+    description: Services
+    command: svc
+  shift-3:
+    shortCut: Shift-3
+    description: Ingresses
+    command: ing
+  shift-4:
+    shortCut: Shift-4
+    description: Nodes
+    command: no
+  shift-5:
+    shortCut: Shift-5
+    description: Events
+    command: ev
+  shift-6:
+    shortCut: Shift-6
+    description: Helm releases
+    command: helm
+  shift-9:
+    shortCut: Shift-9
+    description: Contexts
+    command: ctx

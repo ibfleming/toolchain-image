@@ -1,0 +1,8 @@
+# taplo: TOML formatter. mise.lock files are generated (and end in .lock, so not matched).
+include = ["**/*.toml"]
+exclude = [".claude/.scratch/**", "node_modules/**"]
+
+[formatting]
+indent_string = "  "
+column_width = 120
+reorder_keys = false
