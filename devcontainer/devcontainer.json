@@ -1,26 +1,34 @@
-// Template .devcontainer/devcontainer.json for repos that use the toolchain dev image.
-// Editor extensions/settings, remoteUser and zsh come from the image's
-// devcontainer.metadata label; this file only holds what is per-repo or not allowed in a label.
+// Template .devcontainer/devcontainer.json for repositories that use the toolchain `dev` image.
+// Copy it into a repo and adjust. The image already provides remoteUser (vscode), zsh, editor
+// extensions and settings through its devcontainer.metadata label; this file holds only what is
+// per-repository, and anything here overrides the image (see docs/customizing.md).
 {
   "name": "my-project",
 
-  // Pin by digest (GHCR tags are mutable); Renovate bumps it. Never a bare tag.
-  "image": "ghcr.io/ibfleming/toolchain/dev:<version>@sha256:<digest>",
+  // Pin by digest (registry tags are mutable); let Renovate/Dependabot bump it.
+  // Replace <owner>, <version> and <digest> with a published release (see the GitHub Release notes).
+  "image": "ghcr.io/<owner>/toolchain/dev:<version>@sha256:<digest>",
 
   "mounts": [
-    // Per-project Claude Code state (CLAUDE_CONFIG_DIR): sessions, history, /config edits.
+    // Per-project Claude Code state (CLAUDE_CONFIG_DIR): sessions, history, settings edits.
     "source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
     // zsh history across rebuilds.
-    "source=zsh-state-${devcontainerId},target=/home/vscode/.local/state/zsh,type=volume",
-    // Personal dotfiles (Claude config, ...), READ-ONLY from the WSL clone: no network or
-    // GitHub credentials needed in the container, and nothing in it can modify them.
-    "source=${localEnv:HOME}/repos/dotfiles,target=/home/vscode/.dotfiles,type=bind,readonly"
-  ],
+    "source=zsh-state-${devcontainerId},target=/home/vscode/.local/state/zsh,type=volume"
 
-  // Re-applied on every start (idempotent), so dotfiles edits in WSL need no rebuild.
-  "postStartCommand": "/home/vscode/.dotfiles/install.sh",
+    // Optional: personal dotfiles from a local clone, mounted READ-ONLY so the container can't
+    // modify them and needs no Git credentials (pair with the postStartCommand below).
+    // "source=${localEnv:HOME}/dotfiles,target=/home/vscode/.dotfiles,type=bind,readonly"
+  ]
 
-  // Claude Code auth: a `claude setup-token` token kept in a 0600 file in WSL, outside any
-  // repo, containing CLAUDE_CODE_OAUTH_TOKEN=<token>. Container creation fails if it's missing.
-  "runArgs": ["--env-file", "${localEnv:HOME}/.config/claude-code/container.env"]
+  // Optional: apply those dotfiles on every start (idempotent; edits apply without a rebuild).
+  // "postStartCommand": "/home/vscode/.dotfiles/install.sh",
+
+  // Optional: Claude Code auth without an interactive /login. Store `claude setup-token` output as
+  // CLAUDE_CODE_OAUTH_TOKEN=<token> in a 0600 file outside any repository. Container creation
+  // fails if the file is missing. Alternatively run /login once inside the container; the
+  // claude-code-config volume keeps it.
+  // "runArgs": ["--env-file", "${localEnv:HOME}/.config/claude-code/container.env"],
+
+  // Per-repo editor overrides, e.g. drop an image extension or change a setting:
+  // "customizations": { "vscode": { "extensions": ["-golang.go"], "settings": {} } }
 }

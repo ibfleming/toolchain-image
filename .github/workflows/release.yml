@@ -51,6 +51,7 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
           REVISION: ${{ github.sha }}
+          SOURCE_URL: ${{ github.server_url }}/${{ github.repository }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           make builder

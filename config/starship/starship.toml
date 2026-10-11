@@ -1,6 +1,6 @@
 # Shared starship prompt for the dev image.
-# Derived from starship's `gruvbox-rainbow` preset (`starship preset gruvbox-rainbow`, the
-# same base as the WSL ~/.config/starship.toml). Only the colors changed: a one-dark palette,
+# Derived from starship's `gruvbox-rainbow` preset (`starship preset gruvbox-rainbow`).
+# Only the colors changed: a one-dark palette,
 # with dark text on the bright segments, plus a kubernetes segment (purple; red for prod contexts).
 # Iterate live with `make shell-live`; try the k8s segment with `make shell-kube-demo`.
 # Requires a Nerd Font in the terminal (powerline separators and icons).

@@ -84,8 +84,7 @@ ENV GOTOOLCHAIN=local \
     NPM_CONFIG_UPDATE_NOTIFIER=false
 
 LABEL org.opencontainers.image.title="toolchain-ci" \
-      org.opencontainers.image.description="Pinned CI toolchain (root default, no entrypoint)" \
-      org.opencontainers.image.source="https://github.com/ibfleming/toolchain-image"
+      org.opencontainers.image.description="Pinned CI toolchain (root default, no entrypoint)"
 # Intentionally: no USER, no ENTRYPOINT, no WORKDIR.
 
 # ---------------------------------------------------------------------------
@@ -211,4 +210,4 @@ ENV PATH=${PATH}:/home/${USERNAME}/.local/bin:/home/${USERNAME}/go/bin \
 
 LABEL org.opencontainers.image.title="toolchain-dev" \
       org.opencontainers.image.description="Dev container image: toolchain-ci plus dev conveniences" \
-      io.github.ibfleming.toolchain.claude-code.version="${CLAUDE_CODE_VERSION}"
+      toolchain.claude-code.version="${CLAUDE_CODE_VERSION}"

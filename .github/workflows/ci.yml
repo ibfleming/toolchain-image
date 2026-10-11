@@ -58,6 +58,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }} # BuildKit secret for mise downloads, never a build arg
           REVISION: ${{ github.sha }}
+          SOURCE_URL: ${{ github.server_url }}/${{ github.repository }}
         run: |
           make build
           docker buildx prune --builder toolchain --all --force >/dev/null # images are loaded; drop build cache
