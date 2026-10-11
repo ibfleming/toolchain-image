@@ -37,6 +37,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 FROM base AS mise
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG TARGETARCH
+# renovate: datasource=github-releases depName=jdx/mise
 ARG MISE_VERSION=2026.10.7
 ARG MISE_SHA256_AMD64=6eb1b890e90818417ca34c90dbbd47881917d5cd199f31b63b062ea9c6b18d85
 RUN case "${TARGETARCH}" in \
@@ -147,6 +148,7 @@ RUN fetch() { \
 # signed manifest -> per-platform SHA-256). Root-owned in /usr/local/bin, so the agent (running
 # as vscode) cannot replace it; DISABLE_UPDATES also blocks `claude update` / `claude install`.
 # Pin the `stable` channel: https://downloads.claude.ai/claude-code-releases/stable
+# renovate: datasource=custom.claude-code-stable depName=claude-code
 ARG CLAUDE_CODE_VERSION=2.1.287
 ARG CLAUDE_CODE_GPG_FPR=31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE
 ARG TARGETARCH

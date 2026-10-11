@@ -1,0 +1,114 @@
+# Release: build once, test the exact pushed digests, gate, promote by digest copy, sign,
+# verify, publish a GitHub Release. Runs on a vX.Y.Z tag, weekly (patch rebuild picks up
+# Debian security updates), or manually. See .claude/design-primary.md §5-6.
+name: release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  schedule:
+    - cron: "0 12 * * 1" # Mondays 12:00 UTC
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write # tag (scheduled runs) + GitHub Release
+      packages: write # push staging/release images, registry cache
+      id-token: write # keyless signing (Sigstore, GitHub OIDC)
+    env:
+      REGISTRY: ghcr.io/${{ github.repository_owner }}/toolchain
+      CACHE_REF: ghcr.io/${{ github.repository_owner }}/toolchain/buildcache
+      CACHE_TO: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # tags, for versioning
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Version
+        id: version
+        run: scripts/release-version.sh | tee -a "$GITHUB_OUTPUT"
+
+      - name: Build and push to staging (SBOM + provenance)
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          REVISION: ${{ github.sha }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          make builder
+          export SOURCE_DATE_EPOCH="$(git log -1 --pretty=%ct)"
+          docker buildx bake --builder toolchain --push --metadata-file bake-meta.json ci dev
+          ci="$(jq -er '.ci["containerimage.digest"]' bake-meta.json)"
+          dev="$(jq -er '.dev["containerimage.digest"]' bake-meta.json)"
+          { echo "CI_DIGEST=$ci"; echo "DEV_DIGEST=$dev"; } >> "$GITHUB_ENV"
+
+      - name: Test the pushed digests
+        run: |
+          docker pull "$REGISTRY/staging/ci@$CI_DIGEST"
+          docker pull "$REGISTRY/staging/dev@$DEV_DIGEST"
+          docker tag "$REGISTRY/staging/ci@$CI_DIGEST" toolchain/ci:local
+          docker tag "$REGISTRY/staging/dev@$DEV_DIGEST" toolchain/dev:local
+          make test
+
+      - name: Vulnerability gate
+        run: make scan | tee scan.md
+
+      - name: Promote by digest copy
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          minor="${VERSION%.*}" major="${VERSION%%.*}"
+          for t in ci dev; do
+            d="$CI_DIGEST"; [[ $t == dev ]] && d="$DEV_DIGEST"
+            docker buildx imagetools create \
+              -t "$REGISTRY/$t:$VERSION" -t "$REGISTRY/$t:$minor" -t "$REGISTRY/$t:$major" \
+              "$REGISTRY/staging/$t@$d"
+            # A single-source copy must preserve the digest (signatures/attestations follow it).
+            got="$(docker buildx imagetools inspect "$REGISTRY/$t:$VERSION" --format '{{json .Manifest}}' \
+              | jq -r .digest)"
+            [[ $got == "$d" ]] || { echo "digest changed on promote: $got != $d" >&2; exit 1; }
+          done
+
+      - name: Sign (keyless) and verify
+        env:
+          IDENTITY: https://github.com/${{ github.workflow_ref }}
+        run: |
+          for ref in "$REGISTRY/ci@$CI_DIGEST" "$REGISTRY/dev@$DEV_DIGEST"; do
+            cosign sign --yes "$ref"
+            cosign verify "$ref" \
+              --certificate-identity "$IDENTITY" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com >/dev/null
+            echo "signed + verified: $ref"
+          done
+
+      - name: Tag scheduled/manual release
+        if: steps.version.outputs.new_tag == 'true'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git tag "$TAG" "$GITHUB_SHA"
+          git push origin "$TAG"
+
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+          IDENTITY: https://github.com/${{ github.workflow_ref }}
+        run: |
+          scripts/release-notes.sh > notes.md
+          cat notes.md >> "$GITHUB_STEP_SUMMARY"
+          gh release create "$TAG" --title "$TAG" --notes-file notes.md --verify-tag

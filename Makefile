@@ -17,7 +17,8 @@ CI_IMG  := toolchain/ci:local
 DEV_IMG := toolchain/dev:local
 MISE_IMG := toolchain/mise:local
 
-.PHONY: help builder lint fmt spell lock firewall-snapshot build bake-print shell shell-live shell-kube-demo
+.PHONY: help builder lint fmt spell lock firewall-snapshot pins scan check-commits
+.PHONY: build bake-print shell shell-live shell-kube-demo
 .PHONY: test test-structure test-smoke test-parity test-k9s test-starship test-firewall clean
 
 help: ## List targets
@@ -63,6 +64,15 @@ firewall-snapshot: ## Refresh config/firewall/github-ipv4.txt (GitHub web/api/gi
   @test "$$(grep -vc '^#' config/firewall/github-ipv4.txt.tmp)" -gt 10
   @mv config/firewall/github-ipv4.txt.tmp config/firewall/github-ipv4.txt
   @echo "firewall-snapshot: $$(grep -vc '^#' config/firewall/github-ipv4.txt) ranges"
+
+pins: ## Recompute Dockerfile-pinned checksums (mise, zsh plugins) for the versions set there
+  scripts/update-pins.sh
+
+scan: ## Vulnerability gate + markdown report for the local ci/dev images (Trivy)
+  @rc=0; for img in $(CI_IMG) $(DEV_IMG); do scripts/scan.sh $$img || rc=1; done; exit $$rc
+
+check-commits: ## Check commit subjects since origin/main follow Conventional Commits
+  scripts/check-commits.sh "$$(git merge-base origin/main HEAD 2>/dev/null || true)" HEAD
 
 bake-print: ## Show the resolved bake configuration
   docker buildx bake --print

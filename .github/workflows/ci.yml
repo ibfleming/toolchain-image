@@ -1,0 +1,63 @@
+# CI gate for every push to main and every PR: formatting/lint, Conventional Commits,
+# then build both images and run the full test suite (incl. firewall), spelling and the
+# vulnerability gate. Same `make` targets as on a laptop.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+      - name: Formatting and lint
+        run: make lint
+      - name: Conventional Commits
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: scripts/check-commits.sh "$BASE" "$HEAD_SHA"
+
+  build-test:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: read # read the release pipeline's registry build cache
+    env:
+      REGISTRY: ghcr.io/${{ github.repository_owner }}/toolchain
+      CACHE_REF: ghcr.io/${{ github.repository_owner }}/toolchain/buildcache
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Build ci + dev (local)
+        env:
+          GITHUB_TOKEN: ${{ github.token }} # BuildKit secret for mise downloads, never a build arg
+          REVISION: ${{ github.sha }}
+        run: make build
+      - name: Test
+        run: make test
+      - name: Spelling
+        run: make spell
+      - name: Vulnerability gate
+        run: make scan >> "$GITHUB_STEP_SUMMARY"

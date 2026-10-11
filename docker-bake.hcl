@@ -8,6 +8,10 @@ variable "SOURCE_DATE_EPOCH" { default = "0" }
 variable "PLATFORMS" { default = "linux/amd64" }
 // Registry cache ref prefix, e.g. "${REGISTRY}/buildcache". Empty = no registry cache (local builds).
 variable "CACHE_REF" { default = "" }
+// "1" = also write the registry cache (release pipeline only; CI and laptops only read it).
+variable "CACHE_TO" { default = "" }
+// Git commit the image is built from (org.opencontainers.image.revision).
+variable "REVISION" { default = "" }
 
 function "cache_from" {
   params = [names]
@@ -15,7 +19,7 @@ function "cache_from" {
 }
 function "cache_to" {
   params = [name]
-  result = CACHE_REF == "" ? [] : ["type=registry,ref=${CACHE_REF}:${name},mode=max"]
+  result = CACHE_REF == "" || CACHE_TO != "1" ? [] : ["type=registry,ref=${CACHE_REF}:${name},mode=max"]
 }
 
 target "_common" {
@@ -25,7 +29,8 @@ target "_common" {
   attest    = ["type=provenance,mode=max", "type=sbom"]
   secret    = ["id=github_token,env=GITHUB_TOKEN"]
   labels = {
-    "org.opencontainers.image.version" = VERSION
+    "org.opencontainers.image.version"  = VERSION
+    "org.opencontainers.image.revision" = REVISION
   }
 }
 

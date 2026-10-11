@@ -50,6 +50,16 @@ Design sources, which are authoritative unless the user overrides them:
 - Known gap: the VS Code Claude panel runs the extension's _bundled_ CLI version, not the pinned binary. The `claudeProcessWrapper` approach is untested and not wired in.
 - The dev shell is zsh with a modular config of our own, inspired by smeltery/zsh. smeltery is under PolyForm Shield, so never copy code from it. Plugins are pinned tarballs with checksums (ARGs in the Dockerfile). No plugin manager and no runtime clones. The theme is one-dark across vivid/LS_COLORS, fzf, bat, delta and k9s.
 
+## Release pipeline (Step 3)
+
+- `.github/workflows/ci.yml` runs on PRs and pushes to main: `make lint` and `scripts/check-commits.sh` (Conventional Commits), then `make build test spell scan`. It reads the registry build cache but never writes it.
+- `.github/workflows/release.yml` runs on a `vX.Y.Z` tag, weekly on Monday at 12:00 UTC, or manually. Sequence: bake push to `ghcr.io/ibfleming/toolchain/staging/{ci,dev}:VERSION` (SBOM + `mode=max` provenance) → pull those exact digests and run `make test` → `make scan` gate → promote by digest copy to `toolchain/{ci,dev}:X.Y.Z`, `:X.Y`, `:X` (asserts the digest is unchanged) → cosign **keyless** sign and verify the release digests → tag (scheduled runs) → GitHub Release with notes (`scripts/release-notes.sh`). Scheduled and manual runs release the next patch after the highest tag.
+- Keyless signing was the user's choice, knowing it publishes the repo name, workflow path and digests to the PUBLIC Rekor log. Verify identity: `https://github.com/ibfleming/toolchain-image/.github/workflows/release.yml@<ref>`.
+- Vulnerability policy (`scripts/scan.sh`): BLOCK on any fixable CRITICAL, or fixable HIGH/CRITICAL in OS packages. REPORT fixable HIGH in upstream prebuilt binaries and bundled language packages, as a table in the release notes. No `.trivyignore`.
+- All Actions are pinned to commit SHAs. Tools (trivy, cosign, …) come from the root `mise.toml` through `jdx/mise-action`, so CI equals the laptop.
+- Renovate (`renovate.json`; the Mend Renovate app must be installed on the repo) handles the mise manifests and locks, the base digest, Actions SHAs, and Dockerfile ARGs annotated `# renovate:` (mise, zsh plugins, Claude Code through the `custom.claude-code-stable` datasource). ARG checksums can't be computed by Renovate: run `make pins` on its PR branch. Verified with `renovate --platform=local --dry-run=extract`, which only sees git-tracked files, so stage files first.
+- GitHub API calls go through `scripts/github-api.sh` (gh, `GH_TOKEN`/`GITHUB_TOKEN`, or anonymous).
+
 ## Layout and commands
 
 - `Dockerfile`: stages `base → mise → ci → dev`. `docker-bake.hcl`: `ci`/`dev` (attested, staging tags), `local` group (`toolchain/{ci,dev}:local`). The devcontainer label is defined in bake.

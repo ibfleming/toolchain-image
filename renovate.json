@@ -1,0 +1,67 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests",
+    "customManagers:dockerfileVersions",
+    ":semanticCommits"
+  ],
+  "timezone": "America/Los_Angeles",
+  "schedule": ["before 6am on monday"],
+  "dependencyDashboard": true,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on monday"]
+  },
+  "customDatasources": {
+    "claude-code-stable": {
+      "defaultRegistryUrlTemplate": "https://downloads.claude.ai/claude-code-releases/stable",
+      "format": "plain"
+    }
+  },
+  "packageRules": [
+    {
+      "description": "Image toolchain manifests (ci + dev): build(toolchain)",
+      "matchManagers": ["mise"],
+      "matchFileNames": ["toolchain/**"],
+      "semanticCommitType": "build",
+      "semanticCommitScope": "toolchain"
+    },
+    {
+      "description": "Repo lint/test tooling (root mise.toml): chore(deps)",
+      "matchManagers": ["mise"],
+      "matchFileNames": ["mise.toml"],
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "deps"
+    },
+    {
+      "description": "Base image digest and Dockerfile-pinned versions: build(image)",
+      "matchManagers": ["dockerfile", "custom.regex"],
+      "semanticCommitType": "build",
+      "semanticCommitScope": "image"
+    },
+    {
+      "description": "Checksums next to these versions can't be computed by Renovate",
+      "matchManagers": ["custom.regex"],
+      "matchDepNames": [
+        "jdx/mise",
+        "zsh-users/zsh-autosuggestions",
+        "zsh-users/zsh-syntax-highlighting",
+        "zsh-users/zsh-completions",
+        "Aloxaf/fzf-tab"
+      ],
+      "prBodyNotes": ["**Checksum update required:** run `make pins` on this branch and push (CI fails until then)."]
+    },
+    {
+      "description": "GitHub Actions: ci(actions), pinned to commit SHAs",
+      "matchManagers": ["github-actions"],
+      "semanticCommitType": "ci",
+      "semanticCommitScope": "actions"
+    },
+    {
+      "description": "Major bumps change the image contract (semver major): approve explicitly",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    }
+  ]
+}
