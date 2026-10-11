@@ -1,6 +1,6 @@
-# CI gate for every push to main and every PR: formatting/lint, Conventional Commits,
-# then build both images and run the full test suite, spelling and the
-# vulnerability gate. Same `make` targets as on a laptop.
+# CI gate for every push to main and every PR: formatting/lint and Conventional Commits on
+# pushed commits (PR titles are checked by pr-title.yml), then build both images and run the
+# full test suite, spelling and the vulnerability gate. Same `make` targets as on a laptop.
 name: ci
 
 on:
@@ -26,11 +26,11 @@ jobs:
       - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
       - name: Formatting and lint
         run: make lint
-      - name: Conventional Commits
+      - name: Conventional Commits (pushed commits)
+        if: github.event_name == 'push'
         env:
-          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: scripts/check-commits.sh "$BASE" "$HEAD_SHA"
+          COMMITS_FROM: ${{ github.event.before }}
+        run: make check-commits
 
   build-test:
     runs-on: ubuntu-26.04

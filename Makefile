@@ -17,7 +17,7 @@ CI_IMG  := toolchain/ci:local
 DEV_IMG := toolchain/dev:local
 MISE_IMG := toolchain/mise:local
 
-.PHONY: help builder lint fmt spell lock pins scan check-commits
+.PHONY: help builder lint fmt spell lock pins scan check-commits check-pr-title
 .PHONY: build bake-print shell shell-live shell-kube-demo
 .PHONY: test test-structure test-smoke test-parity test-k9s test-starship clean
 
@@ -66,8 +66,20 @@ pins: ## Recompute Dockerfile-pinned checksums (mise, zsh plugins) for the versi
 scan: ## Vulnerability gate + markdown report for the local ci/dev images (Trivy)
   @rc=0; for img in $(CI_IMG) $(DEV_IMG); do scripts/scan.sh $$img || rc=1; done; exit $$rc
 
-check-commits: ## Check commit subjects since origin/main follow Conventional Commits
-  scripts/check-commits.sh "$$(git merge-base origin/main HEAD 2>/dev/null || true)" HEAD
+# Commits to lint: COMMITS_FROM..HEAD (default: since the merge-base with origin/main).
+# An empty or all-zero COMMITS_FROM (e.g. a brand-new branch push) lints only HEAD.
+COMMITS_FROM ?= $(shell git merge-base origin/main HEAD 2>/dev/null)
+
+check-commits: ## Lint commit messages (Conventional Commits, commitlint) from COMMITS_FROM to HEAD
+  @if [ -z "$(COMMITS_FROM)" ] || [ -z "$$(echo '$(COMMITS_FROM)' | tr -d 0)" ]; then \
+    commitlint --last --verbose; \
+  else \
+    commitlint --from "$(COMMITS_FROM)" --to HEAD --verbose; \
+  fi
+
+check-pr-title: ## Lint a PR title (it becomes the squash commit): TITLE='feat: ...' make check-pr-title
+  @test -n "$$TITLE" || { echo "check-pr-title: set TITLE" >&2; exit 2; }
+  @printf '%s\n' "$$TITLE" | commitlint --verbose
 
 bake-print: ## Show the resolved bake configuration
   docker buildx bake --print
