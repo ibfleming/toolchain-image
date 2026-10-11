@@ -45,6 +45,11 @@ for url in https://api.anthropic.com https://claude.ai https://github.com https:
   https://pypi.org https://proxy.golang.org; do
   scenario "on: ${url#https://} reachable" pass "${on[@]}" -- "$start && $(reach "$url")"
 done
+# DNS-aware tracking: rotating CDN IPs (CI hit this with proxy.golang.org) and subdomains.
+scenario "on: CDN host stays reachable across repeated lookups" pass "${on[@]}" \
+  -- "$start && for i in 1 2 3 4 5 6; do $(reach https://proxy.golang.org) || exit 1; done"
+scenario "on: subdomain of an allowlisted name reachable" pass "${on[@]}" \
+  -- "$start && $(reach https://www.claude.com)"
 scenario "on: example.com blocked" fail "${on[@]}" -- "$start && $(reach https://example.com)"
 scenario "on: blocked request fails fast (<3s, rejected not dropped)" pass "${on[@]}" \
   -- "$start; s=\$SECONDS; ! $(reach https://example.com) 2>/dev/null; (( SECONDS - s < 3 ))"
@@ -65,6 +70,10 @@ scenario "tamper: re-running the firewall keeps it closed" fail "${on[@]}" \
   -- "$start && $start && $(reach https://example.com)"
 scenario "tamper: vscode cannot flush iptables" fail "${on[@]}" -- "$start && iptables -F"
 scenario "tamper: vscode cannot sudo anything else" fail -- "sudo -n iptables -L"
+scenario "tamper: vscode cannot bypass dnsmasq via an outside resolver" fail "${on[@]}" \
+  -- "$start && dig +time=2 +tries=1 +short @1.1.1.1 example.com | grep -qE '^[0-9.]+$'"
+scenario "tamper: vscode cannot rewrite /etc/resolv.conf" fail "${on[@]}" \
+  -- "$start && echo 'nameserver 1.1.1.1' > /etc/resolv.conf"
 
 # 5. Fail closed / fail loudly instead of silently running open.
 scenario "on without NET_ADMIN: fails loudly" fail -e TOOLCHAIN_FIREWALL=1 -e TOOLCHAIN_FIREWALL_GITHUB=snapshot \

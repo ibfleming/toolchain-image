@@ -9,7 +9,11 @@
 #   TOOLCHAIN_FIREWALL_ALLOW="host cidr ..."   extra hostnames / IPv4 / IPv4 CIDRs
 #   TOOLCHAIN_FIREWALL_GITHUB=snapshot         skip the live GitHub meta API, use the baked ranges
 # Requires the container to have NET_ADMIN and NET_RAW (capAdd).
-# Limitation: hostnames resolve once, at start; CDN IP rotation needs a re-run.
+#
+# DNS-aware: a local dnsmasq becomes the container's resolver and adds the IPs of every
+# answer for an allowlisted name (and its subdomains) to the allow set as they are resolved,
+# so CDN-backed hosts with rotating IPs keep working. Only dnsmasq (and root) may send
+# queries upstream; everything else must resolve through it.
 set -euo pipefail
 
 ALLOWLIST=/etc/toolchain/firewall/allowlist.txt
@@ -17,6 +21,7 @@ GITHUB_SNAPSHOT=/etc/toolchain/firewall/github-ipv4.txt
 SET=toolchain-allow
 CHAIN_OUT=TOOLCHAIN-OUT
 CHAIN_IN=TOOLCHAIN-IN
+RUN_DIR=/run/toolchain-firewall
 
 log() { echo "init-firewall: $*"; }
 die() {
@@ -39,9 +44,19 @@ extra="$(pid1_env TOOLCHAIN_FIREWALL_ALLOW)"
 ipv4_re='^([0-9]{1,3}\.){3}[0-9]{1,3}(/([0-9]|[12][0-9]|3[0-2]))?$'
 host_re='^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+$'
 
+# Upstream resolvers come from the container's original resolv.conf, saved on the first run
+# (afterwards /etc/resolv.conf points at the local dnsmasq).
+mkdir -p "$RUN_DIR"
+[[ -f $RUN_DIR/resolv.conf.orig ]] || cp /etc/resolv.conf "$RUN_DIR/resolv.conf.orig"
+mapfile -t upstreams < <(awk '/^nameserver/ {print $2}' "$RUN_DIR/resolv.conf.orig" \
+  | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' | grep -vx '127.0.0.1' || true)
+[[ ${#upstreams[@]} -gt 0 ]] || die "no IPv4 upstream nameserver in $RUN_DIR/resolv.conf.orig"
+
+domains=()
 add_host() {
   local host="$1" ips
-  ips="$(dig +short +time=3 +tries=2 A "$host" | grep -E '^[0-9.]+$' || true)"
+  domains+=("$host")
+  ips="$(dig +short +time=3 +tries=2 "@${upstreams[0]}" A "$host" | grep -E '^[0-9.]+$' || true)"
   if [[ -z $ips ]]; then
     log "warning: $host did not resolve; skipped"
     return 0
@@ -97,11 +112,13 @@ done
 
 iptables -A "$CHAIN_OUT" -o lo -j ACCEPT
 iptables -A "$CHAIN_OUT" -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
-while read -r ns; do
-  [[ $ns =~ $ipv4_re ]] || continue
-  iptables -A "$CHAIN_OUT" -d "$ns" -p udp --dport 53 -j ACCEPT
-  iptables -A "$CHAIN_OUT" -d "$ns" -p tcp --dport 53 -j ACCEPT
-done < <(awk '/^nameserver/ {print $2}' /etc/resolv.conf)
+# Upstream DNS only for dnsmasq (and root, for seeding); everyone else uses 127.0.0.1.
+for ns in "${upstreams[@]}"; do
+  for owner in dnsmasq root; do
+    iptables -A "$CHAIN_OUT" -d "$ns" -p udp --dport 53 -m owner --uid-owner "$owner" -j ACCEPT
+    iptables -A "$CHAIN_OUT" -d "$ns" -p tcp --dport 53 -m owner --uid-owner "$owner" -j ACCEPT
+  done
+done
 iptables -A "$CHAIN_OUT" -m set --match-set "$SET" dst -j ACCEPT
 # Reject (not drop) so blocked requests fail fast instead of hanging.
 iptables -A "$CHAIN_OUT" -p tcp -j REJECT --reject-with tcp-reset
@@ -120,15 +137,39 @@ if ip6tables -L >/dev/null 2>&1; then
   ip6tables -C OUTPUT -o lo -j ACCEPT 2>/dev/null || ip6tables -I OUTPUT 1 -o lo -j ACCEPT
 fi
 
-# 3. Self-check: an allowed host works, an arbitrary one does not.
+# 3. Local resolver: dnsmasq keeps the allow set in sync with DNS answers for allowlisted
+# names (and their subdomains). Restarted on every run; it re-reads the config.
+{
+  echo "no-resolv"
+  echo "listen-address=127.0.0.1"
+  echo "bind-interfaces"
+  echo "user=dnsmasq"
+  echo "pid-file=$RUN_DIR/dnsmasq.pid"
+  echo "cache-size=1000"
+  for ns in "${upstreams[@]}"; do echo "server=$ns"; done
+  for d in "${domains[@]}"; do echo "ipset=/$d/$SET"; done
+} >"$RUN_DIR/dnsmasq.conf"
+if [[ -s $RUN_DIR/dnsmasq.pid ]]; then
+  kill "$(cat "$RUN_DIR/dnsmasq.pid")" 2>/dev/null || true
+  sleep 0.5
+fi
+dnsmasq --conf-file="$RUN_DIR/dnsmasq.conf" || die "dnsmasq failed to start"
+{
+  echo "# Managed by init-firewall: resolve through the local, allowlist-aware dnsmasq."
+  echo "nameserver 127.0.0.1"
+  grep -E '^(search|options)' "$RUN_DIR/resolv.conf.orig" || true
+} >/etc/resolv.conf
+
+# 4. Self-check: an allowed host works, an arbitrary one does not.
 curl -sS --max-time 10 -o /dev/null https://api.github.com/zen || die "self-check failed: api.github.com unreachable"
 # The negative probe only means something if the probe host isn't itself allowlisted
 # (a repo may legitimately allow it via TOOLCHAIN_FIREWALL_ALLOW).
 probe=example.com
-probe_ip="$(dig +short +time=3 +tries=2 A "$probe" | grep -E '^[0-9.]+$' | head -n1 || true)"
+probe_ip="$(dig +short +time=3 +tries=2 "@${upstreams[0]}" A "$probe" | grep -E '^[0-9.]+$' | head -n1 || true)"
 if [[ -n $probe_ip ]] && ! ipset test "$SET" "$probe_ip" 2>/dev/null; then
   if curl -sS --max-time 5 -o /dev/null "https://$probe" 2>/dev/null; then
     die "self-check failed: $probe is reachable"
   fi
 fi
-log "enabled: $(ipset list "$SET" | grep -c '^[0-9]') allowed ranges; self-check passed"
+ranges="$(ipset list "$SET" | grep -c '^[0-9]')"
+log "enabled: $ranges allowed ranges, ${#domains[@]} DNS-tracked names; self-check passed"

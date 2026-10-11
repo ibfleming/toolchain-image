@@ -100,7 +100,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     apt-get update \
   && apt-get install -y --no-install-recommends \
-      bash-completion clangd dnsutils gdb htop ipset iptables less lldb locales openssh-client \
+      bash-completion clangd dnsmasq-base dnsutils gdb htop ipset iptables less lldb locales openssh-client \
       procps valgrind vim-tiny zsh \
   && usermod --shell /usr/bin/zsh "${USERNAME}" \
   && echo 'skip_global_compinit=1' >> /etc/zsh/zshenv
