@@ -73,14 +73,14 @@ url = "https://github.com/jesseduffield/lazygit/releases/download/v0.66.1/lazygi
 url_api = "https://api.github.com/repos/jesseduffield/lazygit/releases/assets/630328438"
 
 [[tools."aqua:junegunn/fzf"]]
-version = "0.74.4"
+version = "0.74.5"
 backend = "aqua:junegunn/fzf"
-specifiers = ["0.74.4"]
+specifiers = ["0.74.5"]
 
 [tools."aqua:junegunn/fzf"."platforms.linux-x64"]
-checksum = "sha256:05e6813a337cc722c3ed07e54a764b75cc5d671e2e60459db0ba696ee5fa7504"
-url = "https://github.com/junegunn/fzf/releases/download/v0.74.4/fzf-0.74.4-linux_amd64.tar.gz"
-url_api = "https://api.github.com/repos/junegunn/fzf/releases/assets/558287768"
+checksum = "sha256:d47d7f882972c7d674dbbba998ffa4116e68379616ffac7695d0671e9a722c5f"
+url = "https://github.com/junegunn/fzf/releases/download/v0.74.5/fzf-0.74.5-linux_amd64.tar.gz"
+url_api = "https://api.github.com/repos/junegunn/fzf/releases/assets/629581740"
 
 [[tools."aqua:neovim/neovim"]]
 version = "0.12.6"
