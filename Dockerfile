@@ -225,7 +225,8 @@ COPY --chown=${USERNAME}:${USERNAME} config/home/ /home/${USERNAME}/
 ENV PATH=${PATH}:/home/${USERNAME}/.local/bin:/home/${USERNAME}/go/bin \
     COLORTERM=truecolor \
     CLAUDE_CONFIG_DIR=/home/${USERNAME}/.claude \
-    DISABLE_UPDATES=1
+    DISABLE_UPDATES=1 \
+    GH_NO_UPDATE_NOTIFIER=1
 
 # Build metadata for `welcome` and tooling: /etc/toolchain/release (version, revision, date,
 # source, previous release), /etc/toolchain/versions (pinned tools) and /etc/toolchain/previous

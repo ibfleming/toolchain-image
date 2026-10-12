@@ -75,7 +75,11 @@ commandTests:
   - name: zsh plugins and generated completions are loaded
     command: su
     args:
-      [vscode, -c, "zsh -i -c 'whence -w _zsh_highlight _zsh_autosuggest_start fzf-tab-complete _kubectl _helm _k9s'"]
+      [
+        vscode,
+        -c,
+        "zsh -i -c 'whence -w _zsh_highlight _zsh_autosuggest_start fzf-tab-complete _kubectl _helm _k9s _gh'",
+      ]
     expectedOutput:
       - "_zsh_highlight: function"
       - "_zsh_autosuggest_start: function"
@@ -83,6 +87,7 @@ commandTests:
       - "_kubectl: function"
       - "_helm: function"
       - "_k9s: function"
+      - "_gh: function"
 
   - name: welcome renders build metadata and tool pins (plain mode, as vscode)
     command: su
