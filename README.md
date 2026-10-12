@@ -90,6 +90,29 @@ your repository and fill in the image reference. Editor extensions, settings, th
 and the shell all come from the image, so the file stays short. Anything you set there overrides
 the image.
 
+The first terminal in a new container shows a short greeting:
+
+- the image version and build;
+- your repository and branch;
+- what's set up (Claude Code sign-in, git identity, SSH agent, kube context);
+- the main tool versions, marked `↑` when updated since the previous release;
+- common shortcuts and a tip of the day.
+
+<img src="docs/assets/welcome.png" alt="The welcome screen in a dev container terminal" width="700">
+
+Run `welcome` to see it again. `welcome tools` lists every pinned tool and what changed, and
+`welcome keys` lists every alias and key binding. `TOOLCHAIN_WELCOME` (`once`, `always`, `off`) sets
+when it appears: see [Customizing](docs/customizing.md#shell-zsh).
+
+<details>
+<summary>welcome tools and welcome keys</summary>
+
+<img src="docs/assets/welcome-tools.png" alt="welcome tools: every pinned tool with its version" width="700">
+
+<img src="docs/assets/welcome-keys.png" alt="welcome keys: aliases and key bindings by topic" width="700">
+
+</details>
+
 ### Verify an image
 
 ```sh
@@ -135,6 +158,7 @@ every lint, test and release tool at the pinned versions from [`mise.toml`](mise
 | `make lock`                                  | Regenerate the toolchain lock files after editing a manifest                          |
 | `make check-commits` / `make check-pr-title` | Lint commit messages / a PR title (commitlint)                                        |
 | `make changelog`                             | Write `CHANGELOG.md` from the commit history (git-cliff)                              |
+| `make screenshots`                           | Re-render the README's `welcome` screenshots (`FONT=<Nerd Font Mono .ttf>`)           |
 
 To add a tool: edit `toolchain/mise.toml` (or `toolchain/dev/mise.toml` for dev-only tools), run
 `make lock`, add a version probe to `tests/smoke.sh` (the test fails without one), then
