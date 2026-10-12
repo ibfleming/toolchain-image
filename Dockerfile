@@ -227,6 +227,22 @@ ENV PATH=${PATH}:/home/${USERNAME}/.local/bin:/home/${USERNAME}/go/bin \
     CLAUDE_CONFIG_DIR=/home/${USERNAME}/.claude \
     DISABLE_UPDATES=1
 
+# Build metadata for `welcome` and tooling: /etc/toolchain/release (version, revision, date,
+# source) and /etc/toolchain/versions (pinned tools). Last on purpose: it changes every
+# release, so only this layer rebuilds.
+ARG VERSION=0.0.0-dev
+ARG REVISION=
+ARG SOURCE_URL=
+ARG SOURCE_DATE_EPOCH=0
+RUN install -d -m 0755 /etc/toolchain \
+  && { \
+    echo "TOOLCHAIN_VERSION=${VERSION}"; \
+    echo "TOOLCHAIN_REVISION=${REVISION}"; \
+    echo "TOOLCHAIN_CREATED=$(date -u -d "@${SOURCE_DATE_EPOCH:-0}" +%F)"; \
+    echo "TOOLCHAIN_SOURCE=${SOURCE_URL}"; \
+  } >/etc/toolchain/release \
+  && print-versions >/etc/toolchain/versions
+
 LABEL org.opencontainers.image.title="toolchain-dev" \
       org.opencontainers.image.description="Dev container image: toolchain-ci plus dev conveniences" \
       toolchain.claude-code.version="${CLAUDE_CODE_VERSION}"

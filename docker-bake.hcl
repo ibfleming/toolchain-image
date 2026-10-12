@@ -29,7 +29,12 @@ function "cache_to" {
 target "_common" {
   context   = "."
   platforms = split(",", PLATFORMS)
-  args      = { SOURCE_DATE_EPOCH = SOURCE_DATE_EPOCH }
+  args = {
+    SOURCE_DATE_EPOCH = SOURCE_DATE_EPOCH
+    VERSION           = VERSION
+    REVISION          = REVISION
+    SOURCE_URL        = SOURCE_URL
+  }
   attest    = ["type=provenance,mode=max", "type=sbom"]
   secret    = ["id=github_token,env=GITHUB_TOKEN"]
   labels = {

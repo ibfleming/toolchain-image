@@ -82,6 +82,12 @@ post.d/     prompt, plugins (autosuggestions, syntax highlighting, fzf-tab), zox
   source /usr/local/share/toolchain/zsh/zshrc
   ```
 
+- **Welcome screen:** the first interactive terminal after each container start shows the image
+  version, build, pinned tool versions and a few shortcuts. Run `welcome` to see it again
+  (`welcome --plain` for no color). Set `TOOLCHAIN_WELCOME` in `remoteEnv` or `~/.zshrc`:
+  `once` (default), `always` (every new terminal) or `off`. `NO_COLOR` is honored. It reads
+  `/etc/toolchain/release` and `/etc/toolchain/versions`, written at build time, and runs no tools,
+  so it costs nothing at startup.
 - **Replace it entirely:** write your own `~/.zshrc` without the `source` line.
 - **Use bash:** set `terminal.integrated.defaultProfile.linux` to `bash` (see above). The image's
   tools don't depend on zsh.
