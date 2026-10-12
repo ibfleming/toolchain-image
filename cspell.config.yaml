@@ -11,6 +11,7 @@ dictionaries:
   - companies
   - fullstack
 ignorePaths:
+  - "**/*.svg" # image assets (path data, not prose)
   - LICENSE # verbatim Apache-2.0 text
   - "**/*.asc" # armored PGP keys
   - "**/*.lock"

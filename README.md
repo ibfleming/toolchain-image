@@ -1,4 +1,7 @@
-# toolchain-image
+<h1 align="center">
+  <img src="docs/assets/logo.svg" alt="" width="160"><br>
+  toolchain-image
+</h1>
 
 One versioned toolchain, two images: **`ci`** for pipelines and **`dev`** for
 [Dev Containers](https://containers.dev). Both come from a single Dockerfile and a single pinned
