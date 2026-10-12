@@ -17,7 +17,7 @@ CI_IMG  := toolchain/ci:local
 DEV_IMG := toolchain/dev:local
 MISE_IMG := toolchain/mise:local
 
-.PHONY: help builder lint fmt spell lock scan check-commits check-pr-title changelog
+.PHONY: help builder lint fmt spell lock scan check-commits check-pr-title screenshots changelog
 .PHONY: build bake-print shell shell-live shell-kube-demo
 .PHONY: test test-structure test-smoke test-parity test-k9s test-starship clean
 
@@ -61,6 +61,9 @@ lock: builder ## Regenerate toolchain/{,dev/}mise.lock using the image's pinned 
     docker run --rm -u $$(id -u):$$(id -g) -e HOME=/tmp -e MISE_DATA_DIR=/tmp/mise \
       -e MISE_CACHE_DIR=/tmp/cache -e MISE_LOCKED=0 -e MISE_GLOBAL_CONFIG_FILE=/m/mise.toml \
       -v "$(CURDIR)/$$dir:/m" -w / $(MISE_IMG) mise lock --global --platform linux-x64; done
+
+screenshots: ## Render the README screenshots of `welcome` from the local dev image (FONT=<Nerd Font Mono .ttf>)
+  scripts/screenshots.sh
 
 changelog: ## Write CHANGELOG.md from Conventional Commits (git-cliff; also attached to each release)
   git-cliff --output CHANGELOG.md

@@ -89,6 +89,34 @@ commandTests:
       - "_k9s: function"
       - "_gh: function"
 
+  - name: welcome renders build metadata and tool pins (plain mode, as vscode)
+    command: su
+    args: [vscode, -c, "zsh -i -c 'welcome --plain'"]
+    expectedOutput:
+      - "dev  v\\d+\\.\\d+\\.\\d+"
+      - "kubectl \\d+\\.\\d+\\.\\d+"
+      - "claude \\d+\\.\\d+\\.\\d+"
+    excludedOutput: ["\\x1b", "%F"]
+    excludedError: [".+"]
+
+  - name: welcome tools lists every pin, welcome keys the shortcuts (plain mode, as vscode)
+    command: su
+    args: [vscode, -c, "zsh -i -c 'welcome tools --plain; welcome keys --plain'"]
+    expectedOutput:
+      - "tools pinned"
+      - "claude-code \\d+\\.\\d+\\.\\d+"
+      - "kubens \\d+"
+      - "gpf push --lease"
+      - "Esc Esc sudo"
+    excludedOutput: ["\\x1b", "%F"]
+    excludedError: [".+"]
+
+  - name: welcome rejects unknown arguments
+    command: su
+    args: [vscode, -c, "zsh -i -c 'welcome --bogus'"]
+    exitCode: 2
+    expectedError: ["unknown argument"]
+
 fileExistenceTests:
   - name: sudoers grant for vscode
     path: /etc/sudoers.d/vscode
@@ -102,6 +130,21 @@ fileExistenceTests:
     gid: 0
   - name: managed policy is root-owned, world-readable
     path: /etc/claude-code/managed-settings.json
+    shouldExist: true
+    permissions: "-rw-r--r--"
+    uid: 0
+  - name: build metadata for welcome (release and tool versions)
+    path: /etc/toolchain/release
+    shouldExist: true
+    permissions: "-rw-r--r--"
+    uid: 0
+  - name: pinned tool versions for welcome
+    path: /etc/toolchain/versions
+    shouldExist: true
+    permissions: "-rw-r--r--"
+    uid: 0
+  - name: previous release's tools for welcome (empty in local builds)
+    path: /etc/toolchain/previous
     shouldExist: true
     permissions: "-rw-r--r--"
     uid: 0
