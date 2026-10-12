@@ -88,7 +88,7 @@ commandTests:
     command: su
     args: [vscode, -c, "zsh -i -c 'welcome --plain'"]
     expectedOutput:
-      - "toolchain · dev  v\\d+\\.\\d+\\.\\d+"
+      - "dev  v\\d+\\.\\d+\\.\\d+"
       - "kubectl \\d+\\.\\d+\\.\\d+"
       - "claude \\d+\\.\\d+\\.\\d+"
     excludedOutput: ["\\x1b", "%F"]

@@ -16,7 +16,7 @@ welcome() {
   [[ -r /etc/toolchain/versions ]] && while IFS='=' read -r k v; do ver[${k##*/}]=$v; done </etc/toolchain/versions
 
   local version=${rel[TOOLCHAIN_VERSION]:-dev} revision=${rel[TOOLCHAIN_REVISION]:-}
-  local created=${rel[TOOLCHAIN_CREATED]:-} source=${rel[TOOLCHAIN_SOURCE]:-}
+  local created=${rel[TOOLCHAIN_CREATED]:-}
   [[ $created == 1970-01-01 ]] && created=
   local os=$(sed -n 's/^PRETTY_NAME="\(.*\)"$/\1/p' /etc/os-release 2>/dev/null)
   os=${${os#Debian GNU/Linux }:+Debian ${os#Debian GNU/Linux }}
@@ -44,20 +44,25 @@ welcome() {
 
   # --- layout -----------------------------------------------------------------------------
   local -a rows=()
-  # The logo in miniature: a container inside a hexagon, checked.
-  local -a art=(
-    "$(_welcome_c $blue ' ▗▄▀▀▀▀▄')$(_welcome_c $cyan $'')"
-    "$(_welcome_c $blue ' ▐ ')$(_welcome_c $purple '████')$(_welcome_c $blue ' ▌')"
-    "$(_welcome_c $blue ' ▐ ')$(_welcome_c $purple '████')$(_welcome_c $blue ' ▌')"
-    "$(_welcome_c $blue ' ▝▀▄▄▄▄▀▘')"
-  )
+  # Logo: "toolchain" in thin box-drawing letters, one gradient step (blue -> purple) per letter.
+  local -a top=('╺┳╸' '┏━┓' '┏━┓' '╻  ' '┏━╸' '╻ ╻' '┏━┓' '╻' '┏┓╻')
+  local -a mid=(' ┃ ' '┃ ┃' '┃ ┃' '┃  ' '┃  ' '┣━┫' '┣━┫' '┃' '┃┗┫')
+  local -a bot=(' ╹ ' '┗━┛' '┗━┛' '┗━╸' '┗━╸' '╹ ╹' '╹ ╹' '╹' '╹ ╹')
+  local -a ramp=($blue $blue '#7aa7ea' '#8f9fe6' '#a497e2' '#b38fde' $purple $purple $purple)
+  local w1=" " w2=" " w3=" " j
+  for j in {1..9}; do
+    w1+=$(_welcome_c $ramp[j] "$top[j] ")
+    w2+=$(_welcome_c $ramp[j] "$mid[j] ")
+    w3+=$(_welcome_c $ramp[j] "$bot[j] ")
+  done
 
-  local title="$(_welcome_c $fg toolchain)$(_welcome_c $dim ' · ')$(_welcome_c $purple dev)"
-  title+="$(_welcome_c $dim '  ')$(_welcome_c $cyan "v$version")"
-  local plat="$(_welcome_c $dim "${os:-Linux} · $(uname -m) · zsh $ZSH_VERSION")"
-  local build="${revision:+$(_welcome_c $dim "${revision[1,7]}")}${created:+$(_welcome_c $dim " · built $created")}"
-  local more="$(_welcome_c $dim "${${source#https://}:-overrides: ~/.config/zsh/local.zsh}")"
-  rows+=("${art[1]}  $title" "${art[2]}  $plat" "${art[3]}  $build" "${art[4]}  $more" "--")
+  local title="$(_welcome_c $purple dev)$(_welcome_c $dim '  ')$(_welcome_c $cyan "v$version")"
+  local plat="$(_welcome_c $dim "${${os% \(*\)}:-Linux} · $(uname -m) · zsh $ZSH_VERSION")"
+  local -a meta=()
+  [[ -n $revision ]] && meta+=("${revision[1,7]}")
+  [[ -n $created ]] && meta+=("built $created")
+  local build="$(_welcome_c $dim "${(j: · :)meta}")"
+  rows+=("$w1 $title" "$w2 $plat" "$w3 $build" "--")
 
   # Three tools per row, each cell padded to a fixed width. `shift` walks the table four
   # fields at a time (arithmetic subscripts get reformatted by shfmt into invalid zsh).
@@ -88,7 +93,7 @@ welcome() {
   }
   rows+=("$(_welcome_keys k kubectl kctx/kns ctx/ns lg lazygit tf tofu z jump)")
   rows+=("$(_welcome_keys '^R' history '^T' files 'Esc Esc' sudo fe/fcd fuzzy versions '')")
-  rows+=("$(_welcome_c $dim "welcome to see this again · TOOLCHAIN_WELCOME=always|once|off")")
+  rows+=("--" "$(_welcome_c $dim "welcome to see this again · TOOLCHAIN_WELCOME=always|once|off")")
 
   # --- render -----------------------------------------------------------------------------
   local width=66 r
