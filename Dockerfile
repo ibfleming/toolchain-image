@@ -228,20 +228,25 @@ ENV PATH=${PATH}:/home/${USERNAME}/.local/bin:/home/${USERNAME}/go/bin \
     DISABLE_UPDATES=1
 
 # Build metadata for `welcome` and tooling: /etc/toolchain/release (version, revision, date,
-# source) and /etc/toolchain/versions (pinned tools). Last on purpose: it changes every
-# release, so only this layer rebuilds.
+# source, previous release), /etc/toolchain/versions (pinned tools) and /etc/toolchain/previous
+# (the previous release's tools, from scripts/previous-tools.sh; empty for local builds). Last on
+# purpose: it changes every release, so only this layer rebuilds.
 ARG VERSION=0.0.0-dev
 ARG REVISION=
 ARG SOURCE_URL=
 ARG SOURCE_DATE_EPOCH=0
+ARG PREVIOUS_VERSION=
+ARG PREVIOUS_TOOLS=
 RUN install -d -m 0755 /etc/toolchain \
   && { \
     echo "TOOLCHAIN_VERSION=${VERSION}"; \
     echo "TOOLCHAIN_REVISION=${REVISION}"; \
     echo "TOOLCHAIN_CREATED=$(date -u -d "@${SOURCE_DATE_EPOCH:-0}" +%F)"; \
     echo "TOOLCHAIN_SOURCE=${SOURCE_URL}"; \
+    echo "TOOLCHAIN_PREVIOUS=${PREVIOUS_VERSION}"; \
   } >/etc/toolchain/release \
-  && print-versions >/etc/toolchain/versions
+  && print-versions >/etc/toolchain/versions \
+  && echo "${PREVIOUS_TOOLS}" | tr ' ' '\n' | sed '/^$/d' >/etc/toolchain/previous
 
 LABEL org.opencontainers.image.title="toolchain-dev" \
       org.opencontainers.image.description="Dev container image: toolchain-ci plus dev conveniences" \

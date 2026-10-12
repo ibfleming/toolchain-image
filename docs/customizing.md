@@ -83,11 +83,16 @@ post.d/     prompt, plugins (autosuggestions, syntax highlighting, fzf-tab), zox
   ```
 
 - **Welcome screen:** the first interactive terminal after each container start shows the image
-  version, build, pinned tool versions and a few shortcuts. Run `welcome` to see it again
-  (`welcome --plain` for no color). Set `TOOLCHAIN_WELCOME` in `remoteEnv` or `~/.zshrc`:
-  `once` (default), `always` (every new terminal) or `off`. `NO_COLOR` is honored. It reads
-  `/etc/toolchain/release` and `/etc/toolchain/versions`, written at build time, and runs no tools,
-  so it costs nothing at startup.
+  version and build, the repository and branch, a status row, the main tool versions (marked `↑`
+  updated or `+` new since the previous release), shortcuts and a tip of the day.
+  - `welcome` shows it again, `welcome tools` lists every pinned tool, `welcome keys` every alias
+    and key binding. `--plain` (or `NO_COLOR`) prints without color or box.
+  - Status dots are green when set up: `claude` (signed in or an API key set), `git` (an email
+    in your git config), `ssh` (a forwarded agent) and `kube` (a current context).
+  - `TOOLCHAIN_WELCOME` in `remoteEnv` or `~/.zshrc`: `once` (default), `always` (every new
+    terminal) or `off`.
+  - It's pure zsh: it reads files written at build time under `/etc/toolchain/` and runs no tools,
+    so it adds a few milliseconds to the first shell.
 - **Replace it entirely:** write your own `~/.zshrc` without the `source` line.
 - **Use bash:** set `terminal.integrated.defaultProfile.linux` to `bash` (see above). The image's
   tools don't depend on zsh.
