@@ -313,24 +313,28 @@ _welcome_render() {
       if [[ $r == -- ]]; then print; else print -P -- "$r"; fi
     done
   else
-    local top= bottom= c1 c2
+    # One left-to-right gradient for the whole frame: each column of the top, bottom and
+    # separator lines gets its color, so the left edge is the first color and the right the last.
+    local top= bottom= sep= c1 c2 c3 left right
     local -i i last=$((width + 1))
     for ((i = 0; i <= last; i++)); do
-      c1=─ c2=─
-      ((i == 0)) && c1=╭ c2=╰
-      ((i == last)) && c1=╮ c2=╯
+      c1=─ c2=─ c3=─
+      ((i == 0)) && c1=╭ c2=╰ c3=├
+      ((i == last)) && c1=╮ c2=╯ c3=┤
       _welcome_mix $blue $purple $i $last
+      ((i == 0)) && left=$REPLY
+      right=$REPLY
       top+="%F{$REPLY}$c1"
       bottom+="%F{$REPLY}$c2"
+      sep+="%F{$REPLY}$c3"
     done
-    local bar=${(l:width::─:)}
     print -P -- "$top%f"
     for r in "${rows[@]}"; do
       if [[ $r == -- ]]; then
-        print -P -- "%F{$dim}├$bar┤%f"
+        print -P -- "$sep%f"
       else
         _welcome_len "$r"
-        print -P -- "%F{$dim}│%f $r${(l:width - 2 - REPLY:: :)} %F{$dim}│%f"
+        print -P -- "%F{$left}│%f $r${(l:width - 2 - REPLY:: :)} %F{$right}│%f"
       fi
     done
     print -P -- "$bottom%f"
