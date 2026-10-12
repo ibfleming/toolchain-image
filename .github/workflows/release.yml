@@ -7,7 +7,9 @@ on:
   push:
     tags: ["v*.*.*"]
   schedule:
-    - cron: "0 12 * * 1" # Mondays 12:00 UTC
+    # Mondays 12:23 UTC. Off the hour on purpose: GitHub delays scheduled runs under load, most
+    # at the top of the hour, and can drop them entirely (the first 12:00 UTC run never started).
+    - cron: "23 12 * * 1"
   workflow_dispatch:
 
 permissions: {}
