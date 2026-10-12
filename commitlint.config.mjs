@@ -3,4 +3,10 @@
 // `make check-pr-title TITLE='...'`. With squash-merge, the PR title becomes the commit on main.
 export default {
   extends: ["@commitlint/config-conventional"],
+  rules: {
+    // The spec sets no body/footer length limit, and URLs or table rows can't be wrapped
+    // (squash commits carry them from PR branches). Headers stay fully enforced.
+    "body-max-line-length": [0],
+    "footer-max-line-length": [0],
+  },
 };
