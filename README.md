@@ -122,7 +122,9 @@ cosign verify ghcr.io/<owner>/toolchain/dev@sha256:<digest> \
 ```
 
 Each release's notes contain the exact command, the toolchain list, the changes and the
-vulnerability report.
+vulnerability report. The identity above is for releases cut from a tag. Weekly and manual
+releases are signed by the workflow on `main`, so their identity ends in
+`release.yml@refs/heads/main`.
 
 ## Running your own copy
 
@@ -135,7 +137,10 @@ vulnerability report.
    requests. Updates arrive weekly in UTC; set `timezone` in `renovate.json` if you want a local
    schedule.
 4. Push a `v0.1.0` tag to cut the first release. After that, releases happen on every `vX.Y.Z`
-   tag, on demand (`workflow_dispatch`), and weekly as a patch rebuild.
+   tag, on demand (`workflow_dispatch` on `main`), and weekly. Weekly and on-demand releases
+   take the next version from the commits since the last tag: a `feat` bumps minor, a breaking
+   change bumps major (minor below 1.0.0), and anything else bumps patch, including a rebuild
+   with no changes.
 5. If your images are private, consumers need `docker login ghcr.io` with a token that has
    `read:packages`.
 
