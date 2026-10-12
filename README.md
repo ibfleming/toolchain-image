@@ -6,7 +6,8 @@ tool manifest, so "it works in my dev container" means "it works in CI".
 
 - **`dev` is built `FROM ci`.** Every CI tool is byte-for-byte the same file in the dev container;
   `dev` only adds conveniences. A parity test enforces it.
-- **Everything is pinned:** the base image by digest, every tool by exact version and checksum.
+- **Everything is pinned:** the base image by digest, every tool by exact version, each verified
+  by checksum, maintainer signature or git commit.
   [Renovate](https://docs.renovatebot.com) proposes updates as pull requests.
 - **Releases are verifiable:** SBOM and build provenance attached, keyless signatures, a
   vulnerability gate, and promotion by digest (the released bytes are the tested bytes).
@@ -128,7 +129,6 @@ every lint, test and release tool at the pinned versions from [`mise.toml`](mise
 | `make scan`                                  | Vulnerability gate and report (Trivy) for the local images                            |
 | `make shell` / `make shell-live`             | Interactive shell in the dev image; `-live` mounts `config/` so edits apply instantly |
 | `make lock`                                  | Regenerate the toolchain lock files after editing a manifest                          |
-| `make pins`                                  | Recompute the checksums pinned in the Dockerfile (mise, zsh plugins)                  |
 | `make check-commits` / `make check-pr-title` | Lint commit messages / a PR title (commitlint)                                        |
 | `make changelog`                             | Write `CHANGELOG.md` from the commit history (git-cliff)                              |
 

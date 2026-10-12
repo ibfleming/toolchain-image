@@ -1,11 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended",
-    "helpers:pinGitHubActionDigests",
-    "customManagers:dockerfileVersions",
-    ":semanticCommits"
-  ],
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests", "customManagers:dockerfileVersions", ":semanticCommits"],
   "schedule": ["before 6am on monday"],
   "dependencyDashboard": true,
   "lockFileMaintenance": {
@@ -40,18 +35,6 @@
       "semanticCommitScope": "image"
     },
     {
-      "description": "Checksums next to these versions can't be computed by Renovate",
-      "matchManagers": ["custom.regex"],
-      "matchDepNames": [
-        "jdx/mise",
-        "zsh-users/zsh-autosuggestions",
-        "zsh-users/zsh-syntax-highlighting",
-        "zsh-users/zsh-completions",
-        "Aloxaf/fzf-tab"
-      ],
-      "prBodyNotes": ["**Checksum update required:** run `make pins` on this branch and push (CI fails until then)."]
-    },
-    {
       "description": "GitHub Actions: ci(actions), pinned to commit SHAs",
       "matchManagers": ["github-actions"],
       "semanticCommitType": "ci",
@@ -68,6 +51,14 @@
       "description": "Major bumps change the image contract (semver major): approve explicitly",
       "matchUpdateTypes": ["major"],
       "dependencyDashboardApproval": true
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Dockerfile deps pinned by tag + commit (`# renovate: ... pin=commit`): both are updated together",
+      "managerFilePatterns": ["/(^|/)Dockerfile$/"],
+      "matchStrings": ["# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>\\S+) pin=commit\\s+ARG [A-Z0-9_]+_VERSION=(?<currentValue>\\S+)\\s+ARG [A-Z0-9_]+_COMMIT=(?<currentDigest>[0-9a-f]{40})"]
     }
   ]
 }

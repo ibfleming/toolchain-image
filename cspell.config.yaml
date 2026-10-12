@@ -116,3 +116,7 @@ words:
   - striptags
   - Sigstore
   - Rekor
+  - clearsigned
+  - openpgp
+  - GOODSIG
+  - VALIDSIG

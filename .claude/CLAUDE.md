@@ -12,7 +12,7 @@ Read first: [README.md](../README.md) (usage, development, releases), [docs/cust
 ## Invariants (don't break without the maintainer's agreement)
 
 - `dev` only _adds_ to `ci`; it never substitutes a tool. Parity test: `ci ⊆ dev` with identical versions.
-- Tool versions live only in `toolchain/mise.toml` (+ `toolchain/dev/mise.toml` for dev-only tools) and their locks. The exceptions are pinned in the Dockerfile with checksums: the base image digest, mise, the zsh plugins and Claude Code.
+- Tool versions live only in `toolchain/mise.toml` (+ `toolchain/dev/mise.toml` for dev-only tools) and their locks. The exceptions are pinned in the Dockerfile: the base image (digest), mise and Claude Code (version; verified by signature against vendored keys in `config/keys/`) and the zsh plugins (git commit).
 - The base image is pinned by multi-arch index digest. Every download is checksum- or signature-verified. No `curl | sh`.
 - Secrets only via `RUN --mount=type=secret`, never `ARG`/`ENV` (`mode=max` provenance publishes build args).
 - Nothing secret in the image label (`remoteEnv`/`containerEnv`): anyone who can pull the image can read it.
@@ -23,12 +23,12 @@ Read first: [README.md](../README.md) (usage, development, releases), [docs/cust
 
 - `Dockerfile`: stages `base → mise → ci → dev`. `docker-bake.hcl`: `ci`/`dev` (attested, `REGISTRY/staging/*`) and the `local` group (`toolchain/{ci,dev}:local`, attestations off so the classic Docker image store can load them). The devcontainer label is defined in bake.
 - `toolchain/`: tool manifests and locks. The root `mise.toml` holds only repo tooling (linters, test/release tools, commitlint, git-cliff), so a contributor's shell never activates the image toolchain.
-- `config/zsh` → `/usr/local/share/toolchain/zsh` (shared, root-owned). `config/starship` → `/usr/local/share/toolchain/starship`. `config/git/gitconfig` → `/etc/gitconfig`. `config/home/` is seeded into `/home/vscode` (vscode-owned). `config/claude/` holds the managed policy and the vendored release key.
+- `config/zsh` → `/usr/local/share/toolchain/zsh` (shared, root-owned). `config/starship` → `/usr/local/share/toolchain/starship`. `config/git/gitconfig` → `/etc/gitconfig`. `config/home/` is seeded into `/home/vscode` (vscode-owned). `config/claude/` holds the managed policy; `config/keys/` the vendored release-signing keys (Claude Code, mise; fingerprints pinned in the Dockerfile).
 - `devcontainer/devcontainer.json`: template for consuming repositories.
 - `make build test` is the inner loop; see `make help` and the README for every target. To add a tool: edit a manifest, run `make lock`, add a probe to `tests/smoke.sh` (the test fails without one), then `make build test`.
 - `make shell-live` mounts `config/{zsh,starship,k9s}` over the image so edits apply without a rebuild; `make shell-kube-demo` adds a fake multi-context kubeconfig.
 - Release flow (`.github/workflows/release.yml`): bake push to staging → `make test` on the pushed digests → `scripts/scan.sh` gate → promote by digest copy (asserts the digest is unchanged) → keyless cosign sign and verify → GitHub Release (notes from `scripts/release-notes.sh` + git-cliff, `CHANGELOG.md` attached). It runs on a `vX.Y.Z` tag, weekly (next patch, `scripts/release-version.sh`), or manually.
-- Renovate (`renovate.json`) updates the mise manifests **and their locks**, the base digest, Action SHAs and Dockerfile ARGs annotated `# renovate:`. Renovate can't compute ARG checksums: run `make pins` on those PR branches. Python minor bumps wait for dashboard approval.
+- Renovate (`renovate.json`) updates the mise manifests **and their locks**, the base digest, Action SHAs and annotated Dockerfile ARGs, with no manual follow-up. Single-version ARGs (`# renovate:`) are mise and Claude Code, verified at build time by signature. Tag + commit pairs (`# renovate: … pin=commit`) are the zsh plugins, fetched by commit. Python minor bumps wait for dashboard approval.
 
 ## Conventions
 
