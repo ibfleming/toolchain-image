@@ -132,8 +132,12 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
           IDENTITY: https://github.com/${{ github.workflow_ref }}
         run: |
-          # The tag exists by now (pushed, or created above), so --latest is this release's range.
-          git-cliff --latest --strip all > changes.md
+          # This release's changes: from the previous tag to this one (it exists by now, pushed or
+          # created above). Not --latest: a weekly rebuild tags the same commit as the previous
+          # release, and git-cliff would then report everything since the release before that.
+          prev="$(git describe --tags --abbrev=0 --match 'v*.*.*' --exclude "$TAG" "$TAG" 2>/dev/null || true)"
+          if [[ -n $prev ]]; then git-cliff "$prev..$TAG" --strip all > changes.md
+          else git-cliff --latest --strip all > changes.md; fi
           git-cliff --output CHANGELOG.md
           scripts/release-notes.sh > notes.md
           cat notes.md >> "$GITHUB_STEP_SUMMARY"
