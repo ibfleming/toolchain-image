@@ -82,6 +82,10 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
   && apt-get install -y --no-install-recommends \
       autoconf automake build-essential ccache clang clang-format clang-tidy file \
       libssl-dev libtool lld pkg-config zlib1g-dev
+# Shell libraries for the image's scripts and for users' own: logging (log.sh) and the One
+# Dark palette. The dir is created first: COPY --chmod=0644 would create it without search bits.
+RUN install -d -m 0755 /usr/local/lib/toolchain
+COPY --chmod=0644 scripts/lib/log.sh scripts/lib/palette.sh /usr/local/lib/toolchain/
 COPY toolchain/mise.toml toolchain/mise.lock /etc/mise/
 COPY --chmod=0755 scripts/link-tools.sh /usr/local/sbin/link-tools
 RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN,required=false \
