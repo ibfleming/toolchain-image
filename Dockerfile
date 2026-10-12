@@ -115,7 +115,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update \
   && apt-get install -y --no-install-recommends \
       bash-completion clangd dnsutils gdb htop less lldb locales openssh-client \
-      procps valgrind vim-tiny zsh \
+      procps socat valgrind vim-tiny zsh \
   && echo "${USERNAME} ALL=(root) NOPASSWD:ALL" > "/etc/sudoers.d/${USERNAME}" \
   && chmod 0440 "/etc/sudoers.d/${USERNAME}" \
   && visudo -cf "/etc/sudoers.d/${USERNAME}" \
@@ -130,6 +130,38 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN,required=false \
   && mise -C / install --locked \
   && link-tools \
   && chmod -R a+rX /opt/mise
+
+# Docker client. The engine is the host's (its socket mounted at /var/run/docker-host.sock, see
+# docker-socket-init) or, opt-in, Docker-in-Docker. The CLI comes from Docker's apt repository,
+# verified by its signing key (vendored, fingerprint pinned): Docker publishes no checksums for its
+# static binaries. buildx and compose are checksum-pinned in the dev mise manifest and linked into
+# the system plugin directory here. Renovate bumps the CLI (deb datasource).
+ARG TARGETARCH
+ARG DOCKER_GPG_FPR=9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+# editorconfig-checker-disable-next-line
+# renovate: datasource=deb depName=docker-ce-cli registryUrl=https://download.docker.com/linux/debian?suite=trixie&components=stable&binaryArch=amd64
+ARG DOCKER_CLI_VERSION=5:29.9.0-1~debian.13~trixie
+COPY config/keys/docker-release.asc /tmp/docker-release.asc
+COPY --chmod=0755 scripts/docker-socket-init.sh /usr/local/sbin/docker-socket-init
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    GNUPGHOME="$(mktemp -d)" && export GNUPGHOME \
+  && gpg --batch --quiet --import /tmp/docker-release.asc \
+  && gpg --batch --with-colons --fingerprint | grep -q "^fpr:::::::::${DOCKER_GPG_FPR}:" \
+  && install -D -m 0644 /tmp/docker-release.asc /etc/apt/keyrings/docker.asc \
+  && echo "deb [arch=${TARGETARCH} signed-by=/etc/apt/keyrings/docker.asc]" \
+      "https://download.docker.com/linux/debian trixie stable" >/etc/apt/sources.list.d/docker.list \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends "docker-ce-cli=${DOCKER_CLI_VERSION}" \
+  && install -d -m 0755 /usr/local/lib/docker/cli-plugins \
+  && for p in buildx compose; do \
+      ln -s "$(readlink -f "/usr/local/bin/docker-cli-plugin-docker-${p}")" \
+        "/usr/local/lib/docker/cli-plugins/docker-${p}" || exit 1; \
+    done \
+  && groupadd --system docker \
+  && usermod -aG docker "${USERNAME}" \
+  && rm -rf "${GNUPGHOME}" /tmp/docker-release.asc \
+  && docker --version && docker buildx version && docker compose version
 
 # zsh plugins: fetched by git COMMIT, which is content-addressed (git verifies the object hash),
 # so no checksum is needed. The tag is kept for readability; Renovate updates tag + commit together
@@ -173,7 +205,6 @@ RUN fetch() { \
 # renovate: datasource=custom.claude-code-stable depName=claude-code
 ARG CLAUDE_CODE_VERSION=2.1.287
 ARG CLAUDE_CODE_GPG_FPR=31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE
-ARG TARGETARCH
 COPY config/keys/claude-code-release.asc /tmp/claude-code-release.asc
 RUN case "${TARGETARCH}" in \
       amd64) plat=linux-x64 ;; \

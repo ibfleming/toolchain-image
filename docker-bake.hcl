@@ -69,6 +69,8 @@ target "dev" {
     // Never put secrets here: anyone who can pull the image can read this label.
     "devcontainer.metadata" = jsonencode([{
       remoteUser = "vscode"
+      // Serves a mounted host Docker socket to vscode; a no-op without one (see the template).
+      postStartCommand = "sudo /usr/local/sbin/docker-socket-init"
       customizations = {
         vscode = {
           extensions = [

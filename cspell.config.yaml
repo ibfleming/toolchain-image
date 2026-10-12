@@ -129,3 +129,6 @@ words:
   - zmodload
   - Caskaydia
   - resvg
+  - socat
+  - moby
+  - nohup

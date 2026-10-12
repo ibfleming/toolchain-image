@@ -36,6 +36,8 @@ probe() {
     *lazygit) lazygit --version ;;
     aqua:cli/cli) gh --version ;;
     *kubens) kubens --version ;;
+    aqua:docker/buildx) docker buildx version ;;
+    aqua:docker/compose) docker compose version ;;
     *kubectx) kubectx --version ;;
     *neovim) nvim --version ;;
     claude-code) claude --version ;;

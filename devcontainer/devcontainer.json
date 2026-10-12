@@ -13,12 +13,20 @@
     // Per-project Claude Code state (CLAUDE_CONFIG_DIR): sessions, history, settings edits.
     "source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
     // zsh history across rebuilds.
-    "source=zsh-state-${devcontainerId},target=/home/vscode/.local/state/zsh,type=volume"
+    "source=zsh-state-${devcontainerId},target=/home/vscode/.local/state/zsh,type=volume",
+    // Docker: use the host's engine. The image serves this socket to vscode as
+    // /var/run/docker.sock. Remove it for no Docker, or see docs/customizing.md for
+    // Docker-in-Docker. Rootless Docker: source=${localEnv:XDG_RUNTIME_DIR}/docker.sock
+    "source=/var/run/docker.sock,target=/var/run/docker-host.sock,type=bind"
 
     // Optional: personal dotfiles from a local clone, mounted READ-ONLY so the container can't
     // modify them and needs no Git credentials (pair with the postStartCommand below).
     // "source=${localEnv:HOME}/dotfiles,target=/home/vscode/.dotfiles,type=bind,readonly"
-  ]
+  ],
+
+  // Host-path bind mounts in `docker run -v` / compose must use host paths: this is the
+  // workspace folder's path on the host (e.g. -v "$LOCAL_WORKSPACE_FOLDER:/src").
+  "remoteEnv": { "LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}" }
 
   // Optional: apply those dotfiles on every start (idempotent; edits apply without a rebuild).
   // "postStartCommand": "/home/vscode/.dotfiles/install.sh",
