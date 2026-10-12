@@ -265,7 +265,7 @@ ENV PATH=${PATH}:/home/${USERNAME}/.local/bin:/home/${USERNAME}/go/bin \
 
 # Build metadata for `welcome` and tooling: /etc/toolchain/release (version, revision, date,
 # source, previous release), /etc/toolchain/versions (pinned tools) and /etc/toolchain/previous
-# (the previous release's tools, from scripts/previous-tools.sh; empty for local builds). Last on
+# (the previous release's tools, from scripts/previous_tools.sh; empty for local builds). Last on
 # purpose: it changes every release, so only this layer rebuilds.
 ARG VERSION=0.0.0-dev
 ARG REVISION=

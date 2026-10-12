@@ -16,7 +16,7 @@ variable "CACHE_TO" { default = "" }
 variable "REVISION" { default = "" }
 // Repository URL (org.opencontainers.image.source); GHCR uses it to link packages to the repo.
 variable "SOURCE_URL" { default = "" }
-// The previous release and its tools (`tool=version ...`), from scripts/previous-tools.sh. The dev
+// The previous release and its tools (`tool=version ...`), from scripts/previous_tools.sh. The dev
 // image's `welcome` marks what changed since then; empty = no marks (local builds).
 variable "PREVIOUS_VERSION" { default = "" }
 variable "PREVIOUS_TOOLS" { default = "" }
