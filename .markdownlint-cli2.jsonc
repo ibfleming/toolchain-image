@@ -27,8 +27,8 @@
     "blanks-around-tables": true,
     "table-column-style": { "style": "aligned" },
 
-    // Inline HTML is reserved for comments/<br>-style needs; flag anything else.
-    "no-inline-html": { "allowed_elements": ["br", "details", "summary"] },
+    // Inline HTML only where Markdown can't express it (e.g. the centered README header).
+    "no-inline-html": { "allowed_elements": ["br", "details", "summary", "img", "h1"] },
   },
 
   "globs": ["**/*.md", ".claude/*.md"], // hidden dirs are skipped by `**`
