@@ -116,13 +116,17 @@ _welcome_main() {
     left+="  %F{$orange}"$''"%f %F{$fg}$REPLY%f"
   fi
 
-  # Status: signed in to Claude Code, a git identity, a forwarded SSH agent, a kube context.
+  # Status: signed in to Claude Code and the GitHub CLI, a git identity, a forwarded SSH agent, a
+  # kube context.
   local -i ok
   local right= f kctx= kubeconfig=${${KUBECONFIG:-$HOME/.kube/config}%%:*}
   local claude_creds=${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.credentials.json
   [[ -s $claude_creds || -n ${ANTHROPIC_API_KEY:-}${CLAUDE_CODE_OAUTH_TOKEN:-} ]]
   _welcome_flag claude $?
   right+=$REPLY
+  [[ -n ${GH_TOKEN:-} || -s ${GH_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/gh}/hosts.yml ]]
+  _welcome_flag gh $?
+  right+="  $REPLY"
   ok=1
   [[ -n ${GIT_AUTHOR_EMAIL:-} ]] && ok=0
   for f in $HOME/.gitconfig ${XDG_CONFIG_HOME:-$HOME/.config}/git/config; do
@@ -287,8 +291,8 @@ _welcome_help() {
     --
     "%F{$fg}TOOLCHAIN_WELCOME%f %F{$dim}when new terminals show the greeting:%f"
     "  %F{$yellow}once%f %F{$dim}per container start (default) ·%f %F{$yellow}always%f %F{$dim}·%f %F{$yellow}off%f"
-    "%F{$dim}status: %F{$green}●%f%F{$dim} ready, %f○%F{$dim} not set up (claude sign-in, git email,%f"
-    "%F{$dim}ssh agent, kube context)%f"
+    "%F{$dim}status: %F{$green}●%f%F{$dim} ready, %f○%F{$dim} not set up (claude and gh sign-in,%f"
+    "%F{$dim}git email, ssh agent, kube context)%f"
   )
 }
 

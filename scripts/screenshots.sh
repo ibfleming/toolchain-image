@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Render the README screenshots of the dev image's `welcome` views into docs/assets/ from the
 # local dev image (`make build` first). Everything machine-specific comes from fixtures (a sample
-# repository, git identity, SSH agent, kube context and Claude sign-in), so the pictures are the
-# same on every machine and show nobody's real setup. The version shown is the next minor after
-# the latest release, with that release's tools as "previous" (needs gh) when available.
+# repository, git identity, SSH agent, kube context, Claude Code and GitHub CLI sign-in), so the
+# pictures are the same on every machine and show nobody's real setup. The version shown is the
+# next minor after the latest release, with that release's tools as "previous" (needs gh) when
+# available.
 #
 # Usage: FONT=/path/to/NerdFontMono.ttf [FONT_FAMILY='CaskaydiaCove NFM'] scripts/screenshots.sh
 # FONT must be a Nerd Font *Mono* (single-width icons), e.g. CaskaydiaCove Nerd Font Mono.
@@ -35,6 +36,7 @@ echo 'ref: refs/heads/main' >"$work/sample/.git/HEAD"
 printf '[user]\n  name = Dev\n  email = dev@example.com\n' >"$work/gitconfig"
 printf 'apiVersion: v1\nkind: Config\ncurrent-context: dev-cluster\n' >"$work/kubeconfig"
 echo '{}' >"$work/credentials.json"
+printf 'github.com:\n  user: dev\n' >"$work/gh-hosts.yml"
 
 prompt=$'\e[38;2;198;120;221m❯\e[0m'
 docker run --rm -t -u vscode -e COLUMNS=100 -e SSH_AUTH_SOCK=/tmp/agent.sock \
@@ -44,6 +46,7 @@ docker run --rm -t -u vscode -e COLUMNS=100 -e SSH_AUTH_SOCK=/tmp/agent.sock \
   -v "$work/gitconfig:/home/vscode/.gitconfig:ro" \
   -v "$work/kubeconfig:/home/vscode/.kube/config:ro" \
   -v "$work/credentials.json:/home/vscode/.claude/.credentials.json:ro" \
+  -v "$work/gh-hosts.yml:/home/vscode/.config/gh/hosts.yml:ro" \
   -v "$work/out:/out" -e PROMPT_MARK="$prompt" \
   "$IMAGE" zsh -i -c '
     python3 -c "import socket; socket.socket(socket.AF_UNIX).bind(\"/tmp/agent.sock\")"

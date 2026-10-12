@@ -88,7 +88,7 @@ post.d/     prompt, plugins (autosuggestions, syntax highlighting, fzf-tab), zox
   updated or `+` new since the previous release), shortcuts and a tip of the day.
   - `welcome` shows it again, `welcome tools` lists every pinned tool, `welcome keys` every alias
     and key binding. `--plain` (or `NO_COLOR`) prints without color or box.
-  - Status dots are green when set up: `claude` (signed in or an API key set), `git` (an email
+  - Status dots are green when set up: `claude` (signed in or an API key set), `gh` (signed in or `GH_TOKEN` set), `git` (an email
     in your git config), `ssh` (a forwarded agent) and `kube` (a current context).
   - `TOOLCHAIN_WELCOME` in `remoteEnv` or `~/.zshrc`: `once` (default), `always` (every new
     terminal) or `off`.
