@@ -17,7 +17,7 @@ CI_IMG  := toolchain/ci:local
 DEV_IMG := toolchain/dev:local
 MISE_IMG := toolchain/mise:local
 
-.PHONY: help builder lint fmt spell lock pins scan check-commits check-pr-title changelog
+.PHONY: help builder lint fmt spell lock scan check-commits check-pr-title changelog
 .PHONY: build bake-print shell shell-live shell-kube-demo
 .PHONY: test test-structure test-smoke test-parity test-k9s test-starship clean
 
@@ -64,9 +64,6 @@ lock: builder ## Regenerate toolchain/{,dev/}mise.lock using the image's pinned 
 
 changelog: ## Write CHANGELOG.md from Conventional Commits (git-cliff; also attached to each release)
   git-cliff --output CHANGELOG.md
-
-pins: ## Recompute Dockerfile-pinned checksums (mise, zsh plugins) for the versions set there
-  scripts/update-pins.sh
 
 scan: ## Vulnerability gate + markdown report for the local ci/dev images (Trivy)
   @rc=0; for img in $(CI_IMG) $(DEV_IMG); do scripts/scan.sh $$img || rc=1; done; exit $$rc

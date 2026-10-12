@@ -37,17 +37,32 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 FROM base AS mise
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG TARGETARCH
+# mise: the release binary is verified through its maintainer-signed checksums
+# (vendored release key -> fingerprint -> clearsigned SHASUMS256 -> SHA-256), so only the version
+# is pinned here and a Renovate bump is complete on its own. The key expires 2028-01-02: refresh
+# config/keys/mise-release.asc from keys.openpgp.org when verification starts failing.
 # renovate: datasource=github-releases depName=jdx/mise
 ARG MISE_VERSION=2026.10.8
-ARG MISE_SHA256_AMD64=c72477ae6c3a8e7d817a322f43da70e4643e75ee5c21265f1c19c894273b7428
+ARG MISE_GPG_FPR=24853EC9F655CE80B48E6C3A8B81C9D17413A06D
+COPY config/keys/mise-release.asc /tmp/mise-release.asc
 RUN case "${TARGETARCH}" in \
-      amd64) arch=x64; sum="${MISE_SHA256_AMD64}" ;; \
+      amd64) arch=x64 ;; \
+      arm64) arch=arm64 ;; \
       *) echo "unsupported TARGETARCH=${TARGETARCH}" >&2; exit 1 ;; \
     esac \
-  && curl -fsSLo /usr/local/bin/mise \
-      "https://github.com/jdx/mise/releases/download/v${MISE_VERSION}/mise-v${MISE_VERSION}-linux-${arch}" \
-  && echo "${sum}  /usr/local/bin/mise" | sha256sum -c - \
+  && GNUPGHOME="$(mktemp -d)" && export GNUPGHOME \
+  && gpg --batch --quiet --import /tmp/mise-release.asc \
+  && base="https://github.com/jdx/mise/releases/download/v${MISE_VERSION}" \
+  && curl -fsSLo /tmp/SHASUMS256.asc "${base}/SHASUMS256.asc" \
+  && gpg --batch --status-file /tmp/gpg.status --output /tmp/SHASUMS256.txt --decrypt /tmp/SHASUMS256.asc \
+  && grep -q '^\[GNUPG:\] GOODSIG ' /tmp/gpg.status \
+  && grep -Eq "^\[GNUPG:\] VALIDSIG .* ${MISE_GPG_FPR}\$" /tmp/gpg.status \
+  && curl -fsSLo /usr/local/bin/mise "${base}/mise-v${MISE_VERSION}-linux-${arch}" \
+  && want="$(awk -v a="./mise-v${MISE_VERSION}-linux-${arch}" '$2 == a {print $1}' /tmp/SHASUMS256.txt)" \
+  && test -n "${want}" \
+  && echo "${want}  /usr/local/bin/mise" | sha256sum -c - \
   && chmod 0755 /usr/local/bin/mise \
+  && rm -rf "${GNUPGHOME}" /tmp/SHASUMS256.* /tmp/gpg.status /tmp/mise-release.asc \
   && mise --version
 ENV MISE_DATA_DIR=/opt/mise \
     MISE_CACHE_DIR=/var/cache/mise \
@@ -116,35 +131,39 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN,required=false \
   && link-tools \
   && chmod -R a+rX /opt/mise
 
-# zsh plugins: pinned release tarballs, checksum-verified (no plugin manager, no runtime clones).
-# renovate: datasource=github-tags depName=zsh-users/zsh-autosuggestions
+# zsh plugins: fetched by git COMMIT, which is content-addressed (git verifies the object hash),
+# so no checksum is needed. The tag is kept for readability; Renovate updates tag + commit together
+# (`pin=commit` annotations, see renovate.json). No plugin manager, no runtime clones.
+# renovate: datasource=github-tags depName=zsh-users/zsh-autosuggestions pin=commit
 ARG ZSH_AUTOSUGGESTIONS_VERSION=v0.7.1
-ARG ZSH_AUTOSUGGESTIONS_SHA256=0df7affff21cd87ed298e6a3970ed08a1dd66a6efa676454ee5b091ad503badf
-# renovate: datasource=github-tags depName=zsh-users/zsh-syntax-highlighting
+ARG ZSH_AUTOSUGGESTIONS_COMMIT=e52ee8ca55bcc56a17c828767a3f98f22a68d4eb
+# renovate: datasource=github-tags depName=zsh-users/zsh-syntax-highlighting pin=commit
 ARG ZSH_SYNTAX_HIGHLIGHTING_VERSION=0.8.0
-ARG ZSH_SYNTAX_HIGHLIGHTING_SHA256=5981c19ebaab027e356fe1ee5284f7a021b89d4405cc53dc84b476c3aee9cc32
-# renovate: datasource=github-tags depName=zsh-users/zsh-completions
+ARG ZSH_SYNTAX_HIGHLIGHTING_COMMIT=db085e4661f6aafd24e5acb5b2e17e4dd5dddf3e
+# renovate: datasource=github-tags depName=zsh-users/zsh-completions pin=commit
 ARG ZSH_COMPLETIONS_VERSION=0.36.0
-ARG ZSH_COMPLETIONS_SHA256=5aa68be2999a7be2eb56de8e4acff8f3bba4a66b9acbb233752536857408fb2e
-# renovate: datasource=github-tags depName=Aloxaf/fzf-tab
+ARG ZSH_COMPLETIONS_COMMIT=28c5bdcaf81bb89e56d0df8267d822c3b8aed9e0
+# renovate: datasource=github-tags depName=Aloxaf/fzf-tab pin=commit
 ARG FZF_TAB_VERSION=v1.3.0
-ARG FZF_TAB_SHA256=d75ac08c2c8af5a6a0478787b0f11fabbe24951973b7841ae963431e2070ee9a
+ARG FZF_TAB_COMMIT=d7e0234614dbe5369fdd760907d12c0e05a4dccc
+# Steps are chained with && so any failure aborts the build (RUN has pipefail but not -e).
 RUN fetch() { \
-      name="$1"; repo="$2"; ref="$3"; sum="$4"; tgz="/tmp/$1.tar.gz"; \
-      curl -fsSLo "$tgz" "https://github.com/${repo}/archive/refs/tags/${ref}.tar.gz"; \
-      echo "${sum}  ${tgz}" | sha256sum -c -; \
-      mkdir -p "/usr/local/share/zsh-plugins/${name}"; \
-      tar -xzf "$tgz" --strip-components=1 -C "/usr/local/share/zsh-plugins/${name}"; \
-      rm -f "$tgz"; \
+      name="$1" && repo="$2" && tag="$3" && commit="$4" && dir="/usr/local/share/zsh-plugins/$1" \
+      && echo "zsh plugin ${name} ${tag} @ ${commit}" \
+      && git init -q "${dir}" \
+      && git -C "${dir}" fetch -q --depth 1 "https://github.com/${repo}.git" "${commit}" \
+      && git -C "${dir}" -c advice.detachedHead=false checkout -q "${commit}" \
+      && test "$(git -C "${dir}" rev-parse HEAD)" = "$(git -C "${dir}" rev-parse "${commit}^{commit}")" \
+      && rm -rf "${dir}/.git"; \
     } \
   && fetch zsh-autosuggestions zsh-users/zsh-autosuggestions \
-      "${ZSH_AUTOSUGGESTIONS_VERSION}" "${ZSH_AUTOSUGGESTIONS_SHA256}" \
+      "${ZSH_AUTOSUGGESTIONS_VERSION}" "${ZSH_AUTOSUGGESTIONS_COMMIT}" \
   && fetch zsh-syntax-highlighting zsh-users/zsh-syntax-highlighting \
-      "${ZSH_SYNTAX_HIGHLIGHTING_VERSION}" "${ZSH_SYNTAX_HIGHLIGHTING_SHA256}" \
+      "${ZSH_SYNTAX_HIGHLIGHTING_VERSION}" "${ZSH_SYNTAX_HIGHLIGHTING_COMMIT}" \
   && fetch zsh-completions zsh-users/zsh-completions \
-      "${ZSH_COMPLETIONS_VERSION}" "${ZSH_COMPLETIONS_SHA256}" \
+      "${ZSH_COMPLETIONS_VERSION}" "${ZSH_COMPLETIONS_COMMIT}" \
   && fetch fzf-tab Aloxaf/fzf-tab \
-      "${FZF_TAB_VERSION}" "${FZF_TAB_SHA256}"
+      "${FZF_TAB_VERSION}" "${FZF_TAB_COMMIT}"
 
 # Claude Code: pinned native binary, verified end to end (vendored release key -> fingerprint ->
 # signed manifest -> per-platform SHA-256). Installed root-owned in /usr/local/bin (outside the
@@ -155,7 +174,7 @@ RUN fetch() { \
 ARG CLAUDE_CODE_VERSION=2.1.287
 ARG CLAUDE_CODE_GPG_FPR=31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE
 ARG TARGETARCH
-COPY config/claude/claude-code-release.asc /tmp/claude-code-release.asc
+COPY config/keys/claude-code-release.asc /tmp/claude-code-release.asc
 RUN case "${TARGETARCH}" in \
       amd64) plat=linux-x64 ;; \
       arm64) plat=linux-arm64 ;; \
@@ -197,7 +216,7 @@ COPY config/git/gitconfig /etc/gitconfig
 # XDG dirs makes named volumes mounted there inherit vscode ownership.
 # (install -d only chowns the dirs it is given, so parents are listed explicitly.)
 RUN for d in .config .cache .local .local/bin .local/share .local/state .local/state/zsh; do \
-      install -d -o "${USERNAME}" -g "${USERNAME}" "/home/${USERNAME}/${d}"; \
+      install -d -o "${USERNAME}" -g "${USERNAME}" "/home/${USERNAME}/${d}" || exit 1; \
     done
 COPY --chown=${USERNAME}:${USERNAME} config/home/ /home/${USERNAME}/
 
