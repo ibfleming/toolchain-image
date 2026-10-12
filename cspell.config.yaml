@@ -121,3 +121,11 @@ words:
   - openpgp
   - GOODSIG
   - VALIDSIG
+  - EPOCHSECONDS
+  - gitdir
+  - rrggbb
+  - subshells
+  - worktrees
+  - zmodload
+  - Caskaydia
+  - resvg
