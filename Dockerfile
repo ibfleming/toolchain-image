@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.19
+# syntax=docker/dockerfile:1.28
 #
 # Stages: base -> mise -> ci -> dev. Published targets are `ci` and `dev`;
 # `dev` is built FROM `ci`, so every CI tool is byte-identical in the dev image.
