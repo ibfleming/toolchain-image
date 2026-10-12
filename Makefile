@@ -19,7 +19,7 @@ MISE_IMG := toolchain/mise:local
 
 .PHONY: help builder lint fmt spell lock scan check-commits check-pr-title screenshots changelog
 .PHONY: build bake-print shell shell-live shell-kube-demo
-.PHONY: test test-structure test-smoke test-parity test-k9s test-starship clean
+.PHONY: test test-structure test-smoke test-parity test-k9s test-starship test-docker clean
 
 help: ## List targets
   @grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -113,7 +113,7 @@ shell-kube-demo: ## shell-live with a fake multi-context kubeconfig (no cluster 
     -v "$(CURDIR)/tests/fixtures/kubeconfig.yaml:/fixtures/kubeconfig.yaml:ro" $(DEV_IMG) \
     bash -c 'cp /fixtures/kubeconfig.yaml /tmp/kubeconfig-demo && exec zsh -l'
 
-test: test-structure test-smoke test-parity test-k9s test-starship ## Run all image tests
+test: test-structure test-smoke test-parity test-k9s test-starship test-docker ## Run all image tests
 
 test-structure:
   container-structure-test test --image $(CI_IMG)  --config tests/ci.structure.yaml
@@ -125,6 +125,9 @@ test-smoke:
 
 test-parity:
   tests/parity.sh $(CI_IMG) $(DEV_IMG)
+
+test-docker: ## Docker outside of Docker: the dev user reaches the host engine via the socket proxy
+  tests/docker-socket.sh $(DEV_IMG)
 
 test-starship: ## Render the starship k8s segment against the fake kubeconfig
   docker run --rm -u vscode -e TERM=xterm-256color -v "$(CURDIR)/tests:/tests:ro" $(DEV_IMG) \

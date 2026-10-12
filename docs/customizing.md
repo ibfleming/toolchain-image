@@ -4,17 +4,18 @@ The `dev` image is opinionated so it works well out of the box: zsh with a modul
 starship, a one-dark theme, k9s, git defaults and Claude Code. Each of these is a **default, not
 a requirement**. This page lists every layer you can override, from lightest touch to heaviest.
 
-| You want to change                          | Lightest way to do it                             |
-| ------------------------------------------- | ------------------------------------------------- |
-| Editor extensions or settings               | Your repo's `devcontainer.json`                   |
-| An environment default (e.g. `GOTOOLCHAIN`) | `containerEnv` in `devcontainer.json`             |
-| Shell aliases, functions, options           | `~/.config/zsh/local.zsh` or `TOOLCHAIN_ZSH_SKIP` |
-| The prompt                                  | Your own `~/.config/starship.toml`                |
-| k9s settings, aliases, skin                 | Edit `~/.config/k9s/`                             |
-| Git defaults                                | Your `~/.gitconfig`                               |
-| Claude Code permissions                     | A derived image with your own managed policy      |
-| Tools or tool versions                      | A derived image (`FROM` `ci` or `dev`)            |
-| Everything                                  | Fork the repository and build your own family     |
+| You want to change                          | Lightest way to do it                                |
+| ------------------------------------------- | ---------------------------------------------------- |
+| Editor extensions or settings               | Your repo's `devcontainer.json`                      |
+| An environment default (e.g. `GOTOOLCHAIN`) | `containerEnv` in `devcontainer.json`                |
+| Shell aliases, functions, options           | `~/.config/zsh/local.zsh` or `TOOLCHAIN_ZSH_SKIP`    |
+| The prompt                                  | Your own `~/.config/starship.toml`                   |
+| k9s settings, aliases, skin                 | Edit `~/.config/k9s/`                                |
+| Git defaults                                | Your `~/.gitconfig`                                  |
+| How Docker runs (host engine, DinD, none)   | The socket mount or a feature in `devcontainer.json` |
+| Claude Code permissions                     | A derived image with your own managed policy         |
+| Tools or tool versions                      | A derived image (`FROM` `ci` or `dev`)               |
+| Everything                                  | Fork the repository and build your own family        |
 
 Changes made only inside a running container (outside the mounted volumes) disappear on rebuild.
 To make them stick, put them in a dotfiles repo (see [Personal config](#personal-config-that-follows-you)),
@@ -119,6 +120,40 @@ The GitHub CLI (`gh`) ships signed out, and the image never contains a token. Si
 container with `gh auth login` (the token is stored in `~/.config/gh/`, inside the container), or
 set `GH_TOKEN` for the session. To keep the sign-in across rebuilds, mount a volume at
 `/home/vscode/.config/gh` in `devcontainer.json`.
+
+## Docker
+
+The `dev` image has the Docker CLI with the buildx and compose plugins, but no engine. Pick where
+the engine comes from in `devcontainer.json`.
+
+**The host's engine (the template's default).** The template mounts your host's socket at
+`/var/run/docker-host.sock`. On every start, the image serves it to `vscode` as
+`/var/run/docker.sock`, using a small socat proxy (`docker-socket-init`, run by the image's
+`postStartCommand`). The proxy leaves the host's socket and its permissions alone.
+`docker ps` then shows your host's containers, and builds share the host's image cache.
+
+- **Bind mounts** in `docker run -v` or compose files are resolved on the host, so use host
+  paths: the template sets `LOCAL_WORKSPACE_FOLDER` to the workspace's host path
+  (`docker run -v "$LOCAL_WORKSPACE_FOLDER:/src" …`).
+- **Rootless Docker or Podman:** change the mount's source to your socket, e.g.
+  `source=${localEnv:XDG_RUNTIME_DIR}/docker.sock`.
+- **Security:** access to the Docker socket is root on the host. Anything in the container,
+  including an agent, can use it. If that's not acceptable, use Docker-in-Docker or no Docker.
+
+**Docker-in-Docker (opt-in).** A separate engine runs inside the container, isolated from the
+host's containers and images. It needs a privileged container and starts a little slower. Remove
+the socket mount and add the feature (`moby: false` installs Docker CE, which supports Debian 13):
+
+```jsonc
+{
+  "features": { "ghcr.io/devcontainers/features/docker-in-docker:2": { "moby": false } }
+}
+```
+
+The feature installs its own CLI in `/usr/bin`, but the image's pinned CLI comes first on `PATH`.
+`docker-socket-init` does nothing in this mode.
+
+**No Docker.** Remove the socket mount. The CLI stays, with nothing to talk to.
 
 ## Claude Code
 
