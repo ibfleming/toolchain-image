@@ -34,6 +34,7 @@ probe() {
     *ripgrep) rg --version ;;
     *delta) delta --version ;;
     *lazygit) lazygit --version ;;
+    aqua:cli/cli) gh --version ;;
     *kubens) kubens --version ;;
     *kubectx) kubectx --version ;;
     *neovim) nvim --version ;;

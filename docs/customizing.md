@@ -47,13 +47,14 @@ language-specific settings there to a minimum, or they'll override every project
 
 The image sets a few environment variables to keep tool versions pinned to the image:
 
-| Variable               | Image default          | Why                                                                    |
-| ---------------------- | ---------------------- | ---------------------------------------------------------------------- |
-| `GOTOOLCHAIN`          | `local`                | Go must not download another toolchain because a `go.mod` asks for one |
-| `UV_PYTHON_DOWNLOADS`  | `never`                | uv uses the image's Python instead of downloading its own              |
-| `UV_PYTHON_PREFERENCE` | `only-system`          | Same, for uv's interpreter discovery                                   |
-| `DISABLE_UPDATES`      | `1`                    | Claude Code changes version only with the image                        |
-| `CLAUDE_CONFIG_DIR`    | `/home/vscode/.claude` | Claude Code state lives in the per-project volume                      |
+| Variable                | Image default          | Why                                                                    |
+| ----------------------- | ---------------------- | ---------------------------------------------------------------------- |
+| `GOTOOLCHAIN`           | `local`                | Go must not download another toolchain because a `go.mod` asks for one |
+| `UV_PYTHON_DOWNLOADS`   | `never`                | uv uses the image's Python instead of downloading its own              |
+| `UV_PYTHON_PREFERENCE`  | `only-system`          | Same, for uv's interpreter discovery                                   |
+| `DISABLE_UPDATES`       | `1`                    | Claude Code changes version only with the image                        |
+| `CLAUDE_CONFIG_DIR`     | `/home/vscode/.claude` | Claude Code state lives in the per-project volume                      |
+| `GH_NO_UPDATE_NOTIFIER` | `1`                    | The GitHub CLI changes version only with the image                     |
 
 Override any of them per repository:
 
@@ -102,6 +103,11 @@ The shared prompt is `/usr/local/share/toolchain/starship/starship.toml`. A pers
 `/etc/gitconfig` sets system-level defaults: the delta pager, `zdiff3` conflict style,
 `pull.rebase` and `fetch.prune`. Any value in your `~/.gitconfig` overrides them. VS Code copies
 your host `.gitconfig` into the container by default.
+
+The GitHub CLI (`gh`) ships signed out, and the image never contains a token. Sign in once per
+container with `gh auth login` (the token is stored in `~/.config/gh/`, inside the container), or
+set `GH_TOKEN` for the session. To keep the sign-in across rebuilds, mount a volume at
+`/home/vscode/.config/gh` in `devcontainer.json`.
 
 ## Claude Code
 

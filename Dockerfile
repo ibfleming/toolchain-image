@@ -225,7 +225,8 @@ COPY --chown=${USERNAME}:${USERNAME} config/home/ /home/${USERNAME}/
 ENV PATH=${PATH}:/home/${USERNAME}/.local/bin:/home/${USERNAME}/go/bin \
     COLORTERM=truecolor \
     CLAUDE_CONFIG_DIR=/home/${USERNAME}/.claude \
-    DISABLE_UPDATES=1
+    DISABLE_UPDATES=1 \
+    GH_NO_UPDATE_NOTIFIER=1
 
 LABEL org.opencontainers.image.title="toolchain-dev" \
       org.opencontainers.image.description="Dev container image: toolchain-ci plus dev conveniences" \

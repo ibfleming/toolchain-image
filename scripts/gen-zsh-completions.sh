@@ -29,5 +29,6 @@ gen rg rg --generate complete-zsh
 gen fd fd --gen-completions zsh
 gen bat bat --completion zsh
 gen delta delta --generate-completion zsh
+gen gh gh completion --shell zsh
 
 echo "gen-zsh-completions: wrote $(find "$dest" -maxdepth 1 -type f | wc -l) completion files to $dest"
