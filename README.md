@@ -102,8 +102,9 @@ vulnerability report.
 
 1. Fork the repository. The workflows publish to `ghcr.io/<your-owner>/toolchain/...` with no
    changes needed.
-2. Repository settings: allow **squash merging** only, with the **PR title** as the commit message
-   (titles are linted as Conventional Commits).
+2. Repository settings: allow **squash merging** only, with the **PR title** as the commit title
+   (linted as Conventional Commits) and the branch's **commit messages** as the body (keeps PR
+   descriptions, such as Renovate's update tables, out of `main`'s history).
 3. Install the [Renovate](https://github.com/apps/renovate) GitHub App in a mode that opens pull
    requests. Updates arrive weekly in UTC; set `timezone` in `renovate.json` if you want a local
    schedule.
