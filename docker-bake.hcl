@@ -2,7 +2,9 @@
 //   docker buildx bake            -> ci + dev (default group)
 //   docker buildx bake local      -> both, loaded into the local (containerd) image store
 
-variable "REGISTRY" { default = "ghcr.io/ibfleming/toolchain" }
+// Where `ci`/`dev` are pushed (staging/<target>:<VERSION>). CI sets ghcr.io/<owner>/toolchain;
+// the default suits a local registry (`docker run -d -p 5000:5000 registry:2`).
+variable "REGISTRY" { default = "localhost:5000/toolchain" }
 variable "VERSION" { default = "0.0.0-dev" }
 variable "SOURCE_DATE_EPOCH" { default = "0" }
 variable "PLATFORMS" { default = "linux/amd64" }
@@ -12,6 +14,8 @@ variable "CACHE_REF" { default = "" }
 variable "CACHE_TO" { default = "" }
 // Git commit the image is built from (org.opencontainers.image.revision).
 variable "REVISION" { default = "" }
+// Repository URL (org.opencontainers.image.source); GHCR uses it to link packages to the repo.
+variable "SOURCE_URL" { default = "" }
 
 function "cache_from" {
   params = [names]
@@ -31,6 +35,7 @@ target "_common" {
   labels = {
     "org.opencontainers.image.version"  = VERSION
     "org.opencontainers.image.revision" = REVISION
+    "org.opencontainers.image.source"   = SOURCE_URL
   }
 }
 
@@ -53,9 +58,6 @@ target "dev" {
     // Never put secrets here: anyone who can pull the image can read this label.
     "devcontainer.metadata" = jsonencode([{
       remoteUser = "vscode"
-      // Opt-in egress firewall: a no-op unless the repo sets containerEnv TOOLCHAIN_FIREWALL=1.
-      postStartCommand = "toolchain-firewall"
-      waitFor          = "postStartCommand"
       customizations = {
         vscode = {
           extensions = [

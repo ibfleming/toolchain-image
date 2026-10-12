@@ -84,8 +84,7 @@ ENV GOTOOLCHAIN=local \
     NPM_CONFIG_UPDATE_NOTIFIER=false
 
 LABEL org.opencontainers.image.title="toolchain-ci" \
-      org.opencontainers.image.description="Pinned CI toolchain (root default, no entrypoint)" \
-      org.opencontainers.image.source="https://github.com/ibfleming/toolchain-image"
+      org.opencontainers.image.description="Pinned CI toolchain (root default, no entrypoint)"
 # Intentionally: no USER, no ENTRYPOINT, no WORKDIR.
 
 # ---------------------------------------------------------------------------
@@ -100,8 +99,11 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     apt-get update \
   && apt-get install -y --no-install-recommends \
-      bash-completion clangd dnsmasq-base dnsutils gdb htop ipset iptables less lldb locales openssh-client \
+      bash-completion clangd dnsutils gdb htop less lldb locales openssh-client \
       procps valgrind vim-tiny zsh \
+  && echo "${USERNAME} ALL=(root) NOPASSWD:ALL" > "/etc/sudoers.d/${USERNAME}" \
+  && chmod 0440 "/etc/sudoers.d/${USERNAME}" \
+  && visudo -cf "/etc/sudoers.d/${USERNAME}" \
   && usermod --shell /usr/bin/zsh "${USERNAME}" \
   && echo 'skip_global_compinit=1' >> /etc/zsh/zshenv
 
@@ -145,8 +147,9 @@ RUN fetch() { \
       "${FZF_TAB_VERSION}" "${FZF_TAB_SHA256}"
 
 # Claude Code: pinned native binary, verified end to end (vendored release key -> fingerprint ->
-# signed manifest -> per-platform SHA-256). Root-owned in /usr/local/bin, so the agent (running
-# as vscode) cannot replace it; DISABLE_UPDATES also blocks `claude update` / `claude install`.
+# signed manifest -> per-platform SHA-256). Installed root-owned in /usr/local/bin (outside the
+# user's home and volumes); DISABLE_UPDATES blocks `claude update` / `claude install`, so the
+# version only changes with the image.
 # Pin the `stable` channel: https://downloads.claude.ai/claude-code-releases/stable
 # renovate: datasource=custom.claude-code-stable depName=claude-code
 ARG CLAUDE_CODE_VERSION=2.1.287
@@ -173,22 +176,15 @@ RUN case "${TARGETARCH}" in \
   && rm -rf "${GNUPGHOME}" /tmp/manifest.json /tmp/manifest.json.sig /tmp/claude-code-release.asc \
   && claude --version
 
-# Config dirs are created explicitly: `COPY --chmod=0644` would otherwise create them 0644
-# (no search bit), leaving the policy unreadable to vscode and so silently unenforced.
-RUN install -d -m 0755 /etc/claude-code /etc/toolchain /etc/toolchain/firewall
+# The policy dir is created explicitly: `COPY --chmod=0644` would otherwise create it 0644
+# (no search bit), leaving the policy unreadable to vscode and so silently ignored.
+RUN install -d -m 0755 /etc/claude-code
 
-# Managed policy (highest settings precedence; root-owned). Per-project Claude state lives in
+# Managed policy: Claude Code's highest-precedence settings, root-owned. A secure default for
+# every container; derived images can replace it (see docs/customizing.md). Per-project Claude state lives in
 # a volume at ~/.claude (CLAUDE_CONFIG_DIR); pre-creating it makes the volume vscode-owned.
 COPY --chmod=0644 config/claude/managed-settings.json /etc/claude-code/managed-settings.json
 RUN install -d -o "${USERNAME}" -g "${USERNAME}" -m 0700 "/home/${USERNAME}/.claude"
-
-# Opt-in egress firewall. vscode's ONLY sudo right: run init-firewall with no arguments.
-COPY --chmod=0644 config/firewall/allowlist.txt config/firewall/github-ipv4.txt /etc/toolchain/firewall/
-COPY --chmod=0755 scripts/init-firewall.sh /usr/local/sbin/init-firewall
-COPY --chmod=0755 scripts/toolchain-firewall.sh /usr/local/bin/toolchain-firewall
-RUN echo "${USERNAME} ALL=(root) NOPASSWD: /usr/local/sbin/init-firewall \"\"" > /etc/sudoers.d/toolchain-firewall \
-  && chmod 0440 /etc/sudoers.d/toolchain-firewall \
-  && visudo -cf /etc/sudoers.d/toolchain-firewall
 
 COPY --chmod=0755 scripts/gen-zsh-completions.sh /usr/local/sbin/gen-zsh-completions
 RUN gen-zsh-completions
@@ -205,8 +201,8 @@ RUN for d in .config .cache .local .local/bin .local/share .local/state .local/s
     done
 COPY --chown=${USERNAME}:${USERNAME} config/home/ /home/${USERNAME}/
 
-# User bin dirs come AFTER the system ones, so nothing running as vscode (an agent included)
-# can shadow root-owned tools like claude, git or kubectl by dropping a file in ~/.local/bin.
+# User bin dirs come AFTER the system ones, so a stray file in ~/.local/bin (from `npm -g`, a
+# script, or an agent) can't silently shadow the image's pinned tools (claude, git, kubectl, ...).
 ENV PATH=${PATH}:/home/${USERNAME}/.local/bin:/home/${USERNAME}/go/bin \
     COLORTERM=truecolor \
     CLAUDE_CONFIG_DIR=/home/${USERNAME}/.claude \
@@ -214,4 +210,4 @@ ENV PATH=${PATH}:/home/${USERNAME}/.local/bin:/home/${USERNAME}/go/bin \
 
 LABEL org.opencontainers.image.title="toolchain-dev" \
       org.opencontainers.image.description="Dev container image: toolchain-ci plus dev conveniences" \
-      io.github.ibfleming.toolchain.claude-code.version="${CLAUDE_CODE_VERSION}"
+      toolchain.claude-code.version="${CLAUDE_CODE_VERSION}"

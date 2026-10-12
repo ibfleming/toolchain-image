@@ -32,7 +32,7 @@ check() { # context, expected text, expected background
   fi
 }
 
-check homelab "homelab (monitoring)" "$purple_bg"
+check dev-cluster "dev-cluster (monitoring)" "$purple_bg"
 check staging "staging" "$purple_bg"
 check prod-us-east "󱃾 prod-us-east (payments)" "$red_bg"
 check "arn:aws:eks:us-east-1:123456789012:cluster/payments-api" "eks:payments-api (default)" "$purple_bg"
@@ -40,9 +40,9 @@ check gke_acme-data-123_us-central1_analytics-main "gke:analytics-main" "$purple
 
 # Namespace switches show up immediately. (kubens would query the API to check the namespace
 # exists, so offline we edit the kubeconfig directly, which is what kubens does afterwards.)
-kubectl config use-context homelab >/dev/null
+kubectl config use-context dev-cluster >/dev/null
 kubectl config set-context --current --namespace=kube-system >/dev/null
-if plain | grep -qF "homelab (kube-system)"; then echo "ok   namespace switch reflected in prompt"; else
+if plain | grep -qF "dev-cluster (kube-system)"; then echo "ok   namespace switch reflected in prompt"; else
   echo "FAIL namespace switch not reflected"
   fail=1
 fi

@@ -43,3 +43,7 @@ max_line_length = off
 # Generated or vendored: checksums/URLs/upstream formatting.
 [{**.lock,config/home/.config/k9s/skins/*.yaml}]
 max_line_length = off
+
+# Verbatim third-party license text: never reformat (it centers its title with odd spacing).
+[LICENSE]
+indent_size = unset

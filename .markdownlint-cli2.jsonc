@@ -1,0 +1,36 @@
+// markdownlint-cli2: Markdown structure and table rules (https://github.com/DavidAnson/markdownlint).
+// Division of labor: Prettier FORMATS Markdown (spacing, list markers, emphasis, table padding);
+// markdownlint CHECKS what formatting can't (headings, lists, code fences, table shape).
+// The `prettier` style turns off every rule Prettier already owns, so the two never conflict.
+{
+  "config": {
+    "extends": "markdownlint/style/prettier",
+
+    // Headings: one H1, then no skipped levels; ATX style (`#`); duplicate names only across sections.
+    "heading-increment": true,
+    "single-h1": true,
+    "no-duplicate-heading": { "siblings_only": true },
+    "no-emphasis-as-heading": true,
+
+    // Lists: `-` bullets, ordered lists numbered 1. 2. 3.
+    "ul-style": { "style": "dash" },
+    "ol-prefix": { "style": "ordered" },
+
+    // Code: fenced blocks with a language, backtick fences.
+    "code-block-style": { "style": "fenced" },
+    "fenced-code-language": true,
+
+    // Tables (GFM): pipes on both ends, same column count in every row, blank line around the
+    // table, and columns vertically aligned (Prettier pads cells to produce exactly this).
+    "table-pipe-style": { "style": "leading_and_trailing" },
+    "table-column-count": true,
+    "blanks-around-tables": true,
+    "table-column-style": { "style": "aligned" },
+
+    // Inline HTML is reserved for comments/<br>-style needs; flag anything else.
+    "no-inline-html": { "allowed_elements": ["br", "details", "summary"] },
+  },
+
+  "globs": ["**/*.md", ".claude/*.md"], // hidden dirs are skipped by `**`
+  "gitignore": true, // skips generated CHANGELOG.md and scratch space
+}

@@ -11,11 +11,13 @@ dictionaries:
   - companies
   - fullstack
 ignorePaths:
+  - LICENSE # verbatim Apache-2.0 text
   - "**/*.asc" # armored PGP keys
   - "**/*.lock"
   - config/home/.config/k9s/skins/**
   - .claude/.scratch/**
-  - .claude/design-*.md
+  - docs/design/image-family-and-supply-chain.md # research records (quotes, sources)
+  - docs/design/dev-environment-and-claude-code.md
 words:
   - ahmetb
   - ajeetdsouza
@@ -53,7 +55,6 @@ words:
   - homelab
   - hrel
   - httproutes
-  - ibfleming
   - jesseduffield
   - jsonencode
   - junegunn
@@ -106,14 +107,12 @@ words:
   - zensh
   - zstd
   - npmjs
-  - pythonhosted
-  - gallerycdn
-  - vsassets
   - dnsutils
   - GNUPGHOME
-  - conntrack
-  - ctstate
-  - dport
   - drwx
   - SHASUMS
   - dnsmasq
+  - commitlint
+  - striptags
+  - Sigstore
+  - Rekor

@@ -17,9 +17,9 @@ CI_IMG  := toolchain/ci:local
 DEV_IMG := toolchain/dev:local
 MISE_IMG := toolchain/mise:local
 
-.PHONY: help builder lint fmt spell lock firewall-snapshot pins scan check-commits
+.PHONY: help builder lint fmt spell lock pins scan check-commits check-pr-title changelog
 .PHONY: build bake-print shell shell-live shell-kube-demo
-.PHONY: test test-structure test-smoke test-parity test-k9s test-starship test-firewall clean
+.PHONY: test test-structure test-smoke test-parity test-k9s test-starship clean
 
 help: ## List targets
   @grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -42,12 +42,14 @@ lint: ## Check formatting + lint on every file (CI gate; `make fmt` fixes most o
   shellcheck $(SH_SCRIPTS)
   RUST_LOG=warn taplo fmt --check
   prettier --check --log-level warn .
+  markdownlint-cli2
   hadolint Dockerfile
 
-fmt: ## Apply the formatters in place (shfmt, taplo, prettier); settings come from .editorconfig
+fmt: ## Apply formatters in place (shfmt, taplo, prettier, markdownlint fixes); policy from .editorconfig
   shfmt --write $(SH_SCRIPTS) $(ZSH_FILES)
   RUST_LOG=warn taplo fmt
   prettier --write --log-level warn .
+  markdownlint-cli2 --fix
 
 spell: ## Spell-check the repo with cspell (runs in the dev image; config: cspell.config.yaml)
   docker run --rm -u vscode -e NPM_CONFIG_UPDATE_NOTIFIER=false -v "$(CURDIR):/w:ro" -w /w $(DEV_IMG) \
@@ -60,13 +62,8 @@ lock: builder ## Regenerate toolchain/{,dev/}mise.lock using the image's pinned 
       -e MISE_CACHE_DIR=/tmp/cache -e MISE_LOCKED=0 -e MISE_GLOBAL_CONFIG_FILE=/m/mise.toml \
       -v "$(CURDIR)/$$dir:/m" -w / $(MISE_IMG) mise lock --global --platform linux-x64; done
 
-firewall-snapshot: ## Refresh config/firewall/github-ipv4.txt (GitHub web/api/git IPv4 ranges) from the API
-  @{ echo "# GitHub web/api/git IPv4 ranges from https://api.github.com/meta, fetched $$(date -u +%F)."; \
-    echo "# Fallback for init-firewall when the API is unreachable. Refresh: make firewall-snapshot"; \
-    scripts/github-meta.sh; } > config/firewall/github-ipv4.txt.tmp
-  @test "$$(grep -vc '^#' config/firewall/github-ipv4.txt.tmp)" -gt 10
-  @mv config/firewall/github-ipv4.txt.tmp config/firewall/github-ipv4.txt
-  @echo "firewall-snapshot: $$(grep -vc '^#' config/firewall/github-ipv4.txt) ranges"
+changelog: ## Write CHANGELOG.md from Conventional Commits (git-cliff; also attached to each release)
+  git-cliff --output CHANGELOG.md
 
 pins: ## Recompute Dockerfile-pinned checksums (mise, zsh plugins) for the versions set there
   scripts/update-pins.sh
@@ -74,8 +71,20 @@ pins: ## Recompute Dockerfile-pinned checksums (mise, zsh plugins) for the versi
 scan: ## Vulnerability gate + markdown report for the local ci/dev images (Trivy)
   @rc=0; for img in $(CI_IMG) $(DEV_IMG); do scripts/scan.sh $$img || rc=1; done; exit $$rc
 
-check-commits: ## Check commit subjects since origin/main follow Conventional Commits
-  scripts/check-commits.sh "$$(git merge-base origin/main HEAD 2>/dev/null || true)" HEAD
+# Commits to lint: COMMITS_FROM..HEAD (default: since the merge-base with origin/main).
+# An empty or all-zero COMMITS_FROM (e.g. a brand-new branch push) lints only HEAD.
+COMMITS_FROM ?= $(shell git merge-base origin/main HEAD 2>/dev/null)
+
+check-commits: ## Lint commit messages (Conventional Commits, commitlint) from COMMITS_FROM to HEAD
+  @if [ -z "$(COMMITS_FROM)" ] || [ -z "$$(echo '$(COMMITS_FROM)' | tr -d 0)" ]; then \
+    commitlint --last --verbose; \
+  else \
+    commitlint --from "$(COMMITS_FROM)" --to HEAD --verbose; \
+  fi
+
+check-pr-title: ## Lint a PR title (it becomes the squash commit): TITLE='feat: ...' make check-pr-title
+  @test -n "$$TITLE" || { echo "check-pr-title: set TITLE" >&2; exit 2; }
+  @printf '%s\n' "$$TITLE" | commitlint --verbose
 
 bake-print: ## Show the resolved bake configuration
   docker buildx bake --print
@@ -104,7 +113,7 @@ shell-kube-demo: ## shell-live with a fake multi-context kubeconfig (no cluster 
     -v "$(CURDIR)/tests/fixtures/kubeconfig.yaml:/fixtures/kubeconfig.yaml:ro" $(DEV_IMG) \
     bash -c 'cp /fixtures/kubeconfig.yaml /tmp/kubeconfig-demo && exec zsh -l'
 
-test: test-structure test-smoke test-parity test-k9s test-starship test-firewall ## Run all image tests
+test: test-structure test-smoke test-parity test-k9s test-starship ## Run all image tests
 
 test-structure:
   container-structure-test test --image $(CI_IMG)  --config tests/ci.structure.yaml
@@ -120,9 +129,6 @@ test-parity:
 test-starship: ## Render the starship k8s segment against the fake kubeconfig
   docker run --rm -u vscode -e TERM=xterm-256color -v "$(CURDIR)/tests:/tests:ro" $(DEV_IMG) \
     bash /tests/starship-kube.sh /tests/fixtures/kubeconfig.yaml
-
-test-firewall: ## Opt-in egress firewall: allow/deny, per-repo extras, tamper resistance (needs network)
-  tests/firewall.sh $(DEV_IMG)
 
 test-k9s: ## Validate the seeded k9s config against k9s's JSON schemas (needs network)
   docker run --rm -u vscode -v "$(CURDIR)/tests/k9s-config.sh:/t.sh:ro" \

@@ -1,5 +1,9 @@
 # One Image Family, Two Front Doors: A Reference Design for Shared CI/CD Builder and Dev Container Images (October 2026)
 
+> **Design record.** Original research behind this project (October 2026), kept for its
+> reasoning and sources. It was written for one developer's setup, and parts are superseded:
+> see [the design index](README.md) for where the implementation deliberately differs.
+
 The best-practice design is **one Dockerfile with named multi-stage targets, `base → ci → dev`, where `dev` is built `FROM ci`**. It is built from a single pinned version manifest in one `docker buildx bake` run, then scanned, given an SBOM and provenance, signed, and published by digest. CI jobs consume `ci`. Dev containers consume `dev` through a thin `devcontainer.json`. The production runtime image is kept completely separate and minimal. Because `dev` inherits from `ci`, the CI toolchain is a strict subset of the dev toolchain by construction, not by convention. That is the only reliable way to make "works in the devcontainer" imply "works in CI".
 
 ## TL;DR
@@ -11,6 +15,7 @@ The best-practice design is **one Dockerfile with named multi-stage targets, `ba
 ## Key Findings
 
 **Established consensus (well-sourced):**
+
 - Docker's own build guidance says to pin base images, and "to fully secure your supply chain integrity, you can pin the image version to a specific digest." It recommends Dependabot's `docker` ecosystem to "raise pull requests to update your base image tags and digests on a schedule."\[1\]
 - BuildKit attestations: provenance at `mode=min` is added by default, and SBOM is opt-in (`--sbom=true`). Docker recommends `mode=max` provenance. The classic `docker` driver can silently drop attestations, so use a `docker-container`, `kubernetes` or `remote` builder.\[2\]\[3\]\[4\]
 - Reproducible timestamps: the Dockerfile frontend has consumed `SOURCE_DATE_EPOCH` as a special build arg since BuildKit 0.11. `rewrite-timestamp=true` on the image exporter (BuildKit v0.13+) applies it to file timestamps inside layers. It is off by default because of the overhead.\[5\]\[6\]
@@ -18,7 +23,8 @@ The best-practice design is **one Dockerfile with named multi-stage targets, `ba
 - Kaniko's original repository was archived by Google on June 3, 2025, and Google's last release was v1.24.0. GitLab's docs now cover BuildKit and rootless Buildah for image builds. Treat Kaniko as legacy: the Chainguard fork (chainguard-forks/kaniko) states that "Binary release artifacts such as container images are not published" except to Chainguard customers.
 
 **Opinion (my recommendation, with reasoning):**
-- Bake tools into the image. Do not install them at container start with version managers or Features. A version manager is best used as the *manifest format and installer at image build time*, not as a runtime resolver.
+
+- Bake tools into the image. Do not install them at container start with version managers or Features. A version manager is best used as the _manifest format and installer at image build time_, not as a runtime resolver.
 - Use Debian 13 (trixie) slim, pinned by digest, as the default base. Use Wolfi/Chainguard or Docker Hardened Images (DHI) `-dev` variants only if you are prepared for their different package ecosystems and user conventions. Do not use Alpine for builder or dev images.
 - Use one polyglot image only while the toolchain is small and shared, as is typical for a freelance/homelab estate. Split per language family when image size, rebuild blast radius or CVE noise starts to hurt.
 
@@ -26,20 +32,20 @@ The best-practice design is **one Dockerfile with named multi-stage targets, `ba
 
 ### 1. Architecture: why multi-stage targets with `dev FROM ci`
 
-| Pattern | Parity guarantee | Maintenance | Verdict |
-|---|---|---|---|
-| Single image for both | Perfect parity | Dev bloat ships to CI; CI gains a larger attack surface | Acceptable only for tiny toolchains |
-| Separate Dockerfiles per image | Drift-prone (two sources of truth) | High | Anti-pattern |
-| Layered family across repos (`base` repo → `toolchain` repo → `dev` repo) | Good if digests are chained | Cross-repo release choreography | Use at org scale |
-| **One Dockerfile, targets `base → ci → dev`, `dev FROM ci`** | **Strict subset by construction** | **Low; one PR updates both** | **Recommended** |
+| Pattern                                                                   | Parity guarantee                   | Maintenance                                             | Verdict                             |
+| ------------------------------------------------------------------------- | ---------------------------------- | ------------------------------------------------------- | ----------------------------------- |
+| Single image for both                                                     | Perfect parity                     | Dev bloat ships to CI; CI gains a larger attack surface | Acceptable only for tiny toolchains |
+| Separate Dockerfiles per image                                            | Drift-prone (two sources of truth) | High                                                    | Anti-pattern                        |
+| Layered family across repos (`base` repo → `toolchain` repo → `dev` repo) | Good if digests are chained        | Cross-repo release choreography                         | Use at org scale                    |
+| **One Dockerfile, targets `base → ci → dev`, `dev FROM ci`**              | **Strict subset by construction**  | **Low; one PR updates both**                            | **Recommended**                     |
 
-The key property is that `dev` is *derived* from `ci` and is never independently assembled. Any tool in CI is, byte for byte, the same file in the dev container, because it sits in a shared layer. Dev-only additions (zsh, gdb, `sudo`, editor helpers) can only be *added*, never substituted. Enforce this in tests (see §9): extract the tool version list from both images and fail the build if any shared tool differs, or if `dev` is missing a `ci` tool.
+The key property is that `dev` is _derived_ from `ci` and is never independently assembled. Any tool in CI is, byte for byte, the same file in the dev container, because it sits in a shared layer. Dev-only additions (zsh, gdb, `sudo`, editor helpers) can only be _added_, never substituted. Enforce this in tests (see §9): extract the tool version list from both images and fail the build if any shared tool differs, or if `dev` is missing a `ci` tool.
 
-**Runtime/production image:** this lives in the *application* repo as its own final stage. It uses the `ci` image (or a language `-dev` image) as the build stage, then copies artifacts into a distroless, Chainguard or DHI runtime base. Chainguard explicitly recommends "using multi-stage builds to copy artifacts from the -dev variant into a more minimal production image."\[13\] Distroless images are unsuitable as *builders* (no shell or package manager), but they are ideal as the runtime target.\[14\]
+**Runtime/production image:** this lives in the _application_ repo as its own final stage. It uses the `ci` image (or a language `-dev` image) as the build stage, then copies artifacts into a distroless, Chainguard or DHI runtime base. Chainguard explicitly recommends "using multi-stage builds to copy artifacts from the -dev variant into a more minimal production image."\[13\] Distroless images are unsuitable as _builders_ (no shell or package manager), but they are ideal as the runtime target.\[14\]
 
 **Diagram (text description):**
 
-```
+```text
              versions manifest (mise.toml + mise.lock / ARGs)   base digest pin
                                │                                   │
                                ▼                                   ▼
@@ -68,7 +74,7 @@ The key property is that `dev` is *derived* from `ci` and is never independently
 
 ### 3. Version pinning and the single source of truth
 
-- **Base image:** `FROM debian:trixie-slim@sha256:<index-digest>` (tag kept for readability, digest for integrity). Use the multi-arch *index* digest so amd64 and arm64 both resolve.\[20\]\[21\]
+- **Base image:** `FROM debian:trixie-slim@sha256:<index-digest>` (tag kept for readability, digest for integrity). Use the multi-arch _index_ digest so amd64 and arm64 both resolve.\[20\]\[21\]
 - **Tool manifest (pick one; don't mix):**
   - **Option A (recommended): `mise.toml` plus a committed `mise.lock`, installed at image build time with `mise install --locked`.** The lockfile "pins exact versions and checksums of tools", and the strict `locked` mode "prevents API calls to GitHub, aqua registry, etc." mise's author Jeff Dickey notes (jdx.dev, March 2026) that only 39 of the 919 tools in the registry default to a plugin-based backend (about 4%). Most install via the aqua backend, which verifies checksums and can verify cosign, SLSA and GitHub attestations. Developers get the same manifest outside containers if they want it, but the image is the contract.
   - **Option B: annotated `ARG`s** (`# renovate: datasource=github-releases depName=hashicorp/terraform` followed by `ARG TERRAFORM_VERSION=…`) plus a `*_SHA256` ARG verified with `sha256sum -c`. Renovate's built-in `customManagers:dockerfileVersions` preset matches exactly this comment and `ARG`/`ENV …_VERSION` convention.\[22\]\[23\]
@@ -79,47 +85,47 @@ The key property is that `dev` is *derived* from `ci` and is never independently
 
 ### 4. Base image choice
 
-| Base | libc | Builder/dev suitability | Notes |
-|---|---|---|---|
-| **Debian 13 trixie-slim** | glibc | **Best default** | Broadest binary compatibility; apt; stable cadence |
-| Ubuntu 24.04/26.04 | glibc | Good | Ships an `ubuntu` user at UID 1000, which collides with dev container UID remapping (see §6). Delete or renumber it\[26\]\[27\] |
-| Microsoft `devcontainers/base` | glibc | Great for `dev`; awkward as `ci` | Default `debian` tag is trixie; non-root `vscode` user (UID 1000) with sudo and zsh/Oh My Zsh.\[28\] Using it as `ci` drags dev conveniences into CI |
-| Wolfi / Chainguard `-dev` | glibc | Viable | glibc, apk, daily rebuilds, low CVE counts; BusyBox ash by default and a different package naming scheme.\[29\]\[30\]\[31\] Free tier tags are limited\[32\] |
-| Docker Hardened Images `-dev` | glibc (Debian) or musl (Alpine) | Viable | More than 1,000 images made free and open source under Apache 2.0 on Dec 17, 2025 (commercial launch was May 2025); `-dev` tags include a shell and package manager |
-| Alpine | musl | **Avoid for builders** | musl breaks prebuilt glibc binaries; Azure DevOps needs Node plus extra packages and a label; GitHub's container hooks special-case `isAlpine`\[33\]\[34\] |
-| UBI | glibc | Good in RHEL/OpenShift shops | dnf; subscription-aware content |
-| Distroless | — | **Never as builder** | Runtime only |
+| Base                           | libc                            | Builder/dev suitability          | Notes                                                                                                                                                               |
+| ------------------------------ | ------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Debian 13 trixie-slim**      | glibc                           | **Best default**                 | Broadest binary compatibility; apt; stable cadence                                                                                                                  |
+| Ubuntu 24.04/26.04             | glibc                           | Good                             | Ships an `ubuntu` user at UID 1000, which collides with dev container UID remapping (see §6). Delete or renumber it\[26\]\[27\]                                     |
+| Microsoft `devcontainers/base` | glibc                           | Great for `dev`; awkward as `ci` | Default `debian` tag is trixie; non-root `vscode` user (UID 1000) with sudo and zsh/Oh My Zsh.\[28\] Using it as `ci` drags dev conveniences into CI                |
+| Wolfi / Chainguard `-dev`      | glibc                           | Viable                           | glibc, apk, daily rebuilds, low CVE counts; BusyBox ash by default and a different package naming scheme.\[29\]\[30\]\[31\] Free tier tags are limited\[32\]        |
+| Docker Hardened Images `-dev`  | glibc (Debian) or musl (Alpine) | Viable                           | More than 1,000 images made free and open source under Apache 2.0 on Dec 17, 2025 (commercial launch was May 2025); `-dev` tags include a shell and package manager |
+| Alpine                         | musl                            | **Avoid for builders**           | musl breaks prebuilt glibc binaries; Azure DevOps needs Node plus extra packages and a label; GitHub's container hooks special-case `isAlpine`\[33\]\[34\]          |
+| UBI                            | glibc                           | Good in RHEL/OpenShift shops     | dnf; subscription-aware content                                                                                                                                     |
+| Distroless                     | —                               | **Never as builder**             | Runtime only                                                                                                                                                        |
 
 ### 5. Building the image itself
 
 - **docker buildx bake** with one `docker-bake.hcl`: a `_common` target (platforms `linux/amd64` and `linux/arm64`, attestations, labels, `SOURCE_DATE_EPOCH`) inherited by `ci` and `dev` targets.\[35\]\[36\] Bake builds targets in parallel and shares the `base`/`ci` layers.\[36\]\[37\]
-- **Multi-arch:** build arm64 *natively* where you can (an arm64 runner, or a remote BuildKit on an arm64 node). QEMU emulation of compiler-heavy stages is slow. The per-platform outputs combine into one index.
+- **Multi-arch:** build arm64 _natively_ where you can (an arm64 runner, or a remote BuildKit on an arm64 node). QEMU emulation of compiler-heavy stages is slow. The per-platform outputs combine into one index.
 - **Caching:** `cache-to=type=registry,ref=…:buildcache,mode=max` for CI, and `RUN --mount=type=cache,target=/var/cache/apt` (with `sharing=locked`) for package caches.\[35\]\[38\] Don't let developer laptops write to the shared cache.\[39\]
-- **Versioning:** use semver for the image *contract*. Major means a tool removed or a breaking upgrade (e.g., Terraform major). Minor means a tool added or a minor bump. Patch means a rebuild for OS patches or a tool patch. Release tags (`1.8.0`) are immutable (enable tag immutability in the registry). `1.8` and `1` float. Consumers pin `@sha256` and let Renovate bump them. Never let anything consume `latest`.
-- **Promotion:** build once, push to a `staging/` path, run the tests and scan gates, then *copy by digest* to `release/` (`crane copy` or `docker buildx imagetools create`), never rebuild. Signatures and attestations follow the digest.
+- **Versioning:** use semver for the image _contract_. Major means a tool removed or a breaking upgrade (e.g., Terraform major). Minor means a tool added or a minor bump. Patch means a rebuild for OS patches or a tool patch. Release tags (`1.8.0`) are immutable (enable tag immutability in the registry). `1.8` and `1` float. Consumers pin `@sha256` and let Renovate bump them. Never let anything consume `latest`.
+- **Promotion:** build once, push to a `staging/` path, run the tests and scan gates, then _copy by digest_ to `release/` (`crane copy` or `docker buildx imagetools create`), never rebuild. Signatures and attestations follow the digest.
 - **Rebuild cadence:** schedule a weekly rebuild (Chainguard images are rebuilt daily).\[31\] Also rebuild on base-digest PRs and critical CVEs. A scheduled rebuild with no manifest changes produces a new patch version.
 
 ### 6. Security and supply chain
 
-- **Users and UIDs:** create `vscode` (UID/GID 1000) in `base`. On Linux, the dev container tooling remaps the remote user's UID/GID to the host user's to avoid bind-mount permission problems (`updateRemoteUserUID`, default true). It only applies at container creation, and it *does not update the UID when another user already has it*. This is exactly the Ubuntu 24.04 `ubuntu`-user trap,\[27\]\[40\] so ensure exactly one regular user exists. On macOS and Windows, Docker Desktop's file sharing hides most of this.\[40\]
+- **Users and UIDs:** create `vscode` (UID/GID 1000) in `base`. On Linux, the dev container tooling remaps the remote user's UID/GID to the host user's to avoid bind-mount permission problems (`updateRemoteUserUID`, default true). It only applies at container creation, and it _does not update the UID when another user already has it_. This is exactly the Ubuntu 24.04 `ubuntu`-user trap,\[27\]\[40\] so ensure exactly one regular user exists. On macOS and Windows, Docker Desktop's file sharing hides most of this.\[40\]
 - **CI user, the honest trade-off:** GitHub's docs say container actions "must be run by the default Docker user (root)".\[41\] In actions/checkout issue #956, filed after the v3.1.0 rollout, the maintainers wrote that "running a container using a container user that is not 'root' is an unsupported path", and it breaks writes to `/__w` and `$GITHUB_ENV` (actions/runner issue #4302 reports container jobs failing with permission denied on `GITHUB_ENV` and the workspace after upgrading from v2.330.0 to v2.332.0). Microsoft Learn's container-jobs page requires a `USER` "provided with access to groupadd and other privileged commands without using sudo", because the agent creates its own user at job start, and it warns: "No ENTRYPOINT. Containers with an ENTRYPOINT might not work, because docker exec expects the container to always be running." So the `ci` image keeps root as its default user and sets no `ENTRYPOINT`. Get your least privilege from: ephemeral, single-job runners; no `--privileged`; no host Docker socket; Kubernetes `securityContext` (`runAsNonRoot`, dropped capabilities) where the platform supports it (GitLab Kubernetes executor, Jenkins pod templates, ARC Kubernetes mode); and short-lived OIDC credentials instead of stored secrets.
 - **Building images inside CI jobs:** rank the options. (1) Remote or rootless **BuildKit** (buildx `kubernetes`/`remote` driver, or `moby/buildkit:rootless` with `buildctl-daemonless.sh`).\[42\]\[43\] (2) Rootless **Buildah**, which GitLab documents and which is native to OpenShift.\[44\]\[45\] (3) Docker-outside-of-Docker (socket mount), which is root-equivalent on the host and acceptable only on single-tenant, ephemeral VMs. (4) Docker-in-Docker, which needs privileged containers (ARC's `containerMode: dind` runs a privileged daemon sidecar).\[46\]\[47\] Rootless BuildKit in Kubernetes often needs `--oci-worker-no-process-sandbox`, which is a real isolation trade-off.\[48\]
-- **Secrets:** use `RUN --mount=type=secret,id=…` only. Never `ARG`/`ENV` a secret. With `mode=max` provenance, build-arg values are *published in the attestation*.\[3\]
+- **Secrets:** use `RUN --mount=type=secret,id=…` only. Never `ARG`/`ENV` a secret. With `mode=max` provenance, build-arg values are _published in the attestation_.\[3\]
 - **Scan, SBOM, sign:** use a Trivy (or Grype) gate on fixable CRITICAL/HIGH findings, with a reviewed `.trivyignore` that has expiries. Generate the BuildKit SBOM (Syft-based scanner) plus provenance.\[49\] Sign with `cosign sign --yes <image>@sha256:…` using GitHub OIDC (`id-token: write`).\[50\]\[51\] Consumers verify with `--certificate-identity` pinned to your release workflow ref and `--certificate-oidc-issuer https://token.actions.githubusercontent.com`. \[52\]\[53\]\[54\] Never verify with `--certificate-identity-regexp '.*'`.
 - **SLSA/OpenSSF:** BuildKit provenance on a hosted, ephemeral builder gets you close to SLSA Build L2. L3 needs a hardened, isolated builder whose signing material is inaccessible to the build steps. Pin GitHub Actions to commit SHAs (an OpenSSF Scorecard "Pinned-Dependencies" check) and pin `FROM` lines by digest.\[55\] Use CIS Docker Benchmark items such as health checks and no secrets in layers as review checklist input, recognizing that many of them target runtime containers, not builder images.
 
 ### 7. CI agent specifics
 
-| Platform | How to consume | Image requirements / gotchas |
-|---|---|---|
-| **GitHub Actions** | `container: image: …/ci@sha256:A` on Linux runners | Runner mounts the workspace at `/__w/…` and overrides workdir. No `ENTRYPOINT`. Default step shell is `sh`, so set `defaults.run.shell: bash`. Root default user. On ARC, set `containerMode` to `dind` (privileged) or `kubernetes` (container hooks, needs a work volume, no privileged daemon)\[47\]\[56\] |
-| **Azure DevOps** | `resources.containers` + `container:` | glibc so the agent's Node runs. Provide `bash`, `sudo`, `which`, `groupadd`. User must be able to run `groupadd` without sudo. Non-glibc images need their own Node plus the `com.azure.dev.pipelines.agent.handler.node.path` label. Classic pipelines don't support container jobs\[34\]\[57\] |
-| **GitLab CI** | `image: name: …/ci@sha256:A`, `entrypoint: [""]` | Image needs `sh` or `bash` and `grep`. Scripts run in `/builds/<project>`, not your `WORKDIR`. `image@digest` is supported natively\[58\] |
-| **Jenkins (Kubernetes plugin)** | Pod template: `jnlp` (inbound-agent) container + your `ci` container, steps in `container('ci')`\[59\] | Don't bake the Jenkins agent into the toolchain image. Keep the agent sidecar separate so agent upgrades don't force toolchain releases. Use `command: sleep infinity`-style long-running args |
+| Platform                        | How to consume                                                                                         | Image requirements / gotchas                                                                                                                                                                                                                                                                                  |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **GitHub Actions**              | `container: image: …/ci@sha256:A` on Linux runners                                                     | Runner mounts the workspace at `/__w/…` and overrides workdir. No `ENTRYPOINT`. Default step shell is `sh`, so set `defaults.run.shell: bash`. Root default user. On ARC, set `containerMode` to `dind` (privileged) or `kubernetes` (container hooks, needs a work volume, no privileged daemon)\[47\]\[56\] |
+| **Azure DevOps**                | `resources.containers` + `container:`                                                                  | glibc so the agent's Node runs. Provide `bash`, `sudo`, `which`, `groupadd`. User must be able to run `groupadd` without sudo. Non-glibc images need their own Node plus the `com.azure.dev.pipelines.agent.handler.node.path` label. Classic pipelines don't support container jobs\[34\]\[57\]              |
+| **GitLab CI**                   | `image: name: …/ci@sha256:A`, `entrypoint: [""]`                                                       | Image needs `sh` or `bash` and `grep`. Scripts run in `/builds/<project>`, not your `WORKDIR`. `image@digest` is supported natively\[58\]                                                                                                                                                                     |
+| **Jenkins (Kubernetes plugin)** | Pod template: `jnlp` (inbound-agent) container + your `ci` container, steps in `container('ci')`\[59\] | Don't bake the Jenkins agent into the toolchain image. Keep the agent sidecar separate so agent upgrades don't force toolchain releases. Use `command: sleep infinity`-style long-running args                                                                                                                |
 
 **Ephemeral vs. long-lived agents:** use ephemeral, one job per runner (ARC scale sets, GitHub `--ephemeral`, autoscaled GitLab runners, Jenkins pods). Long-lived agents accumulate state and root-owned workspace files, and they make "works on CI" depend on agent history.\[60\]\[61\]
 
-**Run as job container vs. bake the agent in:** run the toolchain image *as the job container* and let the platform inject its agent. Baking the runner into the image couples two release cycles. Only do it where the platform requires it (e.g., a custom ARC runner image when you can't use container jobs).
+**Run as job container vs. bake the agent in:** run the toolchain image _as the job container_ and let the platform inject its agent. Baking the runner into the image couples two release cycles. Only do it where the platform requires it (e.g., a custom ARC runner image when you can't use container jobs).
 
 **Proxmox homelab (opinion):** run a small k3s or Talos cluster on Proxmox VMs with ARC scale sets (`minRunners: 0`) or GitLab's Kubernetes executor. Add Harbor or Zot as a local registry with a Docker Hub pull-through cache and tag immutability, and a rootless BuildKit deployment for image builds. This gives you ephemeral, unprivileged builds on hardware you control.
 
@@ -133,7 +139,7 @@ The key property is that `dev` is *derived* from `ci` and is never independently
 ### 9. Testing the image
 
 - **Hadolint** in pre-commit and CI. DL3008, DL3018 and similar rules flag unpinned packages,\[62\] so tune the apt rules to match your policy rather than fake-pinning.
-- **container-structure-test** (still maintained; v1.22.1 released Dec 2025) with `commandTests` asserting `expectedOutput` regexes such as `Terraform v1\.9\.8`.\[63\]\[64\] Better still, *generate* the test file from the manifest so versions are never duplicated by hand. **goss/dgoss** (v0.4.10, July 2026) is a good alternative,\[65\]\[66\] and nicer for process, port and file-permission checks.
+- **container-structure-test** (still maintained; v1.22.1 released Dec 2025) with `commandTests` asserting `expectedOutput` regexes such as `Terraform v1\.9\.8`.\[63\]\[64\] Better still, _generate_ the test file from the manifest so versions are never duplicated by hand. **goss/dgoss** (v0.4.10, July 2026) is a good alternative,\[65\]\[66\] and nicer for process, port and file-permission checks.
 - **Parity test:** run `mise ls --json` (or a `versions.sh` that prints `tool=version`) in both `ci` and `dev`. Assert that `ci ⊆ dev` with identical versions, and that both equal the manifest.
 - **Platform smoke tests:** a matrix job that actually runs the image as a GitHub container job, a GitLab job and an Azure DevOps container job, runs `actions/checkout`, writes `$GITHUB_ENV`, and builds a sample project. This catches the user and entrypoint regressions described above.
 - **Dev container smoke test:** `devcontainer up` plus `devcontainer exec` on a Linux runner with a non-1000 host UID, to exercise UID remapping.
@@ -150,7 +156,7 @@ The key property is that `dev` is *derived* from `ci` and is never independently
 
 ### Repository layout
 
-```
+```text
 toolchain-images/
 ├── Dockerfile                  # stages: base, ci, dev
 ├── docker-bake.hcl
@@ -381,11 +387,11 @@ Optionally verify before use, in a policy step or an admission controller such a
 ## Key trade-offs and decision points
 
 - **Bake vs. version manager at runtime:** baking gives deterministic, offline-capable and fast job starts. Runtime installs (`mise install` in a CI step, Features at create time) give per-repo flexibility but bring back network dependence and drift. **Decision:** bake; let repos override only by deriving `FROM ci@sha256`.
-- **Root default in `ci`:** this is a pragmatic concession to GitHub Actions and Azure DevOps semantics. If you run *only* GitLab or Jenkins on Kubernetes, you can set `USER 1000` in `ci` and enforce `runAsNonRoot`. That is better, but it is platform-specific.
+- **Root default in `ci`:** this is a pragmatic concession to GitHub Actions and Azure DevOps semantics. If you run _only_ GitLab or Jenkins on Kubernetes, you can set `USER 1000` in `ci` and enforce `runAsNonRoot`. That is better, but it is platform-specific.
 - **Polyglot vs. per-language images:** polyglot means one thing to update and maximal parity, but it is bigger, noisier and has a larger blast radius. Per-family images are leaner but need more release orchestration. Split at roughly 2–3 GB or when upgrade cadences conflict.
 - **Debian vs. Wolfi/DHI:** Debian gives maximum compatibility and familiarity. Wolfi/DHI give far fewer CVEs and faster patches, at the cost of a different package universe and, for Chainguard, a commercial model for pinned tags.\[32\] For a freelance/homelab context, Debian plus weekly rebuilds is the sweet spot. Revisit if clients demand near-zero-CVE scan reports.
 - **Bit-for-bit reproducibility:** this is achievable for small stages with `SOURCE_DATE_EPOCH`, `rewrite-timestamp` and snapshot apt sources, but expensive for a full toolchain image. Provenance plus digest pinning gives most of the security value.
-- **devcontainers/ci vs. native container jobs:** use `devcontainers/ci` if you want CI to *be* the dev container (lifecycle hooks included). Use native `container:`/`image:` with the `ci` target for speed, a smaller surface and platform-native semantics. With this design, the native route is the better default.
+- **devcontainers/ci vs. native container jobs:** use `devcontainers/ci` if you want CI to _be_ the dev container (lifecycle hooks included). Use native `container:`/`image:` with the `ci` target for speed, a smaller surface and platform-native semantics. With this design, the native route is the better default.
 
 ## Caveats
 

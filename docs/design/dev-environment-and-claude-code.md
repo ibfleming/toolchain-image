@@ -1,26 +1,30 @@
 # Ship toolchains in images, Claude config in git
 
+> **Design record.** Original research behind this project (October 2026), kept for its
+> reasoning and sources. It was written for one developer's setup, and parts are superseded:
+> see [the design index](README.md) for where the implementation deliberately differs.
+
 The setup that holds up best is a **thin, synced local VS Code profile that contains only the WSL and Dev Containers connectors plus UI-only extensions**. The **prebuilt `dev` image** provides toolchains, language extensions, language settings, a pinned and signature-verified Claude Code binary, and a managed-settings policy, all through its `devcontainer.metadata` label. Claude Code itself works best with state split into two kinds. **Authored configuration** (personal CLAUDE.md, rules, skills, agents, commands, hooks, base settings, and plugin and MCP bootstrap scripts) goes in a git-tracked dotfiles subtree that is copied into each environment. **Machine-generated state** (`.claude.json`, credentials, transcripts, auto memory, plugin cache) stays per environment: `~/.claude` in WSL, and in each container a named volume with `CLAUDE_CONFIG_DIR` pointed at it. Do **not** bind-mount one live `~/.claude` into both WSL and containers. Users have reported `.claude.json` lost-update races and OAuth refresh-token rotation races. That design also gives a compromised container write access to hooks and settings that later run unsandboxed on the WSL host. The cost of this design is that **chat transcripts do not flow live between WSL and containers**. Transcripts are keyed by absolute path and live in each config directory. Rebuilds do keep them, cross-project `--resume <id>` works inside one config directory, and aligning the workspace path plus an explicit `autoMemoryDirectory` can share auto memory across environments, though that last part is unverified. One concrete hazard needs attention before you copy Anthropic's reference container: **its firewall allowlist is out of date**. It lacks the current sign-in, token-refresh and download hosts and still lists retired telemetry hosts.
 
 ## Five homes for state, each with one owner
 
 The design rests on one rule: every piece of state has exactly one authoritative home, and nothing machine-written is synced through git. VS Code makes the editor half of this straightforward. **Settings Sync never syncs extensions to or from remote windows** (WSL, containers, SSH) ([VS Code: Settings Sync](https://code.visualstudio.com/docs/configure/settings-sync)). Settings in a container's `customizations.vscode.settings` are written to a machine-specific Remote settings file that **overrides synced User settings** ([containers.dev: Supporting tools](https://containers.dev/supporting); [VS Code: Settings](https://code.visualstudio.com/docs/configure/settings)). Claude Code needs more care, because its home directory mixes three kinds of data. The first is user-authored config: `settings.json`, `CLAUDE.md`, `rules/`, `skills/`, `agents/`, `commands/`, `output-styles/` and `keybindings.json`. The second is credentials: `.credentials.json` at mode 0600 on Linux. The third is generated data: `projects/` transcripts and auto memory, `history.jsonl`, `file-history/`, `plugins/` and `sessions/` ([.claude directory](https://code.claude.com/docs/en/claude-directory)). A separate file, `~/.claude.json`, holds the OAuth session, per-project trust, user- and local-scope MCP servers, and UI toggles. **Setting `CLAUDE_CONFIG_DIR` moves all of it, including `.claude.json`, into one directory** ([Settings](https://code.claude.com/docs/en/settings); [Dev containers](https://code.claude.com/docs/en/devcontainer)). That makes a single named volume a complete persistence unit.
 
-| Item | Authoritative home | Notes |
-|---|---|---|
-| Language runtimes, linters, formatters (Python, Ruff binary, Terraform, etc.) | `ci` stage of the image (inherited by `dev`) | CI and dev containers get identical tools |
-| Claude Code CLI binary (pinned, GPG/SHA256-verified) | `dev` image, `/usr/local/bin/claude` | Root-owned path, so the agent can't replace it; `DISABLE_UPDATES=1` |
-| Claude Code policy (`managed-settings.json`) | `dev` image, `/etc/claude-code/` | Highest settings precedence |
-| VS Code language extensions (Ruff, Python, Claude Code, …) and language settings | `dev` image `devcontainer.metadata` label | Remote settings override synced User settings |
-| `remoteUser`, `containerEnv` (`CLAUDE_CONFIG_DIR`, `DISABLE_UPDATES`), `capAdd`, firewall `postStartCommand` | `dev` image label | Merged with the repo's devcontainer.json, which is applied last |
-| Image reference **by digest**, `workspaceMount`/`workspaceFolder`, Claude volume mount, `--env-file`, per-repo extension opt-outs | Repo `.devcontainer/devcontainer.json` | Project-specific, reviewed in PRs |
-| Team instructions and config: `CLAUDE.md`, `.claude/settings.json`, `.claude/{skills,agents,commands,rules}`, `.mcp.json` | Repo (committed) | Shared with collaborators and CI |
-| `CLAUDE.local.md`, `.claude/settings.local.json` | Repo checkout, gitignored | Visible to WSL and container through the bind mount |
-| Personal `CLAUDE.md`, `rules/`, `skills/`, `agents/`, `commands/`, `output-styles/`, `keybindings.json`, `settings.base.json` (hooks, `enabledPlugins`, `extraKnownMarketplaces`), hook scripts, MCP/plugin bootstrap scripts | Dotfiles repo, `claude/` subtree | Copied (not live-linked) into each config dir by `install.sh` |
-| `.claude.json`, `.credentials.json`, `projects/` (transcripts + auto memory), `history.jsonl`, `file-history/`, `plugins/` cache, `sessions/`, `backups/` | **Per environment**: WSL `~/.claude`; container named volume | Never in git; plaintext at rest |
-| `CLAUDE_CODE_OAUTH_TOKEN` (if used) | 0600 file in WSL outside any repo, injected at container start | Never baked into the image or committed |
-| GHCR pull credential | WSL Docker credential store | Classic PAT `read:packages`, or the `gh` token with that scope |
-| WSL/Dev Containers connectors, theme, font, `dev.containers.*`, `dotfiles.*` | Local Windows synced profile | Nothing language-specific |
+| Item                                                                                                                                                                                                                          | Authoritative home                                             | Notes                                                               |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Language runtimes, linters, formatters (Python, Ruff binary, Terraform, etc.)                                                                                                                                                 | `ci` stage of the image (inherited by `dev`)                   | CI and dev containers get identical tools                           |
+| Claude Code CLI binary (pinned, GPG/SHA256-verified)                                                                                                                                                                          | `dev` image, `/usr/local/bin/claude`                           | Root-owned path, so the agent can't replace it; `DISABLE_UPDATES=1` |
+| Claude Code policy (`managed-settings.json`)                                                                                                                                                                                  | `dev` image, `/etc/claude-code/`                               | Highest settings precedence                                         |
+| VS Code language extensions (Ruff, Python, Claude Code, …) and language settings                                                                                                                                              | `dev` image `devcontainer.metadata` label                      | Remote settings override synced User settings                       |
+| `remoteUser`, `containerEnv` (`CLAUDE_CONFIG_DIR`, `DISABLE_UPDATES`), `capAdd`, firewall `postStartCommand`                                                                                                                  | `dev` image label                                              | Merged with the repo's devcontainer.json, which is applied last     |
+| Image reference **by digest**, `workspaceMount`/`workspaceFolder`, Claude volume mount, `--env-file`, per-repo extension opt-outs                                                                                             | Repo `.devcontainer/devcontainer.json`                         | Project-specific, reviewed in PRs                                   |
+| Team instructions and config: `CLAUDE.md`, `.claude/settings.json`, `.claude/{skills,agents,commands,rules}`, `.mcp.json`                                                                                                     | Repo (committed)                                               | Shared with collaborators and CI                                    |
+| `CLAUDE.local.md`, `.claude/settings.local.json`                                                                                                                                                                              | Repo checkout, gitignored                                      | Visible to WSL and container through the bind mount                 |
+| Personal `CLAUDE.md`, `rules/`, `skills/`, `agents/`, `commands/`, `output-styles/`, `keybindings.json`, `settings.base.json` (hooks, `enabledPlugins`, `extraKnownMarketplaces`), hook scripts, MCP/plugin bootstrap scripts | Dotfiles repo, `claude/` subtree                               | Copied (not live-linked) into each config dir by `install.sh`       |
+| `.claude.json`, `.credentials.json`, `projects/` (transcripts + auto memory), `history.jsonl`, `file-history/`, `plugins/` cache, `sessions/`, `backups/`                                                                     | **Per environment**: WSL `~/.claude`; container named volume   | Never in git; plaintext at rest                                     |
+| `CLAUDE_CODE_OAUTH_TOKEN` (if used)                                                                                                                                                                                           | 0600 file in WSL outside any repo, injected at container start | Never baked into the image or committed                             |
+| GHCR pull credential                                                                                                                                                                                                          | WSL Docker credential store                                    | Classic PAT `read:packages`, or the `gh` token with that scope      |
+| WSL/Dev Containers connectors, theme, font, `dev.containers.*`, `dotfiles.*`                                                                                                                                                  | Local Windows synced profile                                   | Nothing language-specific                                           |
 
 The table encodes a security position as well as a tidy layout. The image and the managed policy are the only places that define what tools and permissions exist. The repo defines project behavior. The dotfiles repo defines personal behavior. Volumes hold only what Claude Code writes itself. **Transcripts and history are not encrypted at rest; "OS file permissions are the only protection"** ([.claude directory](https://code.claude.com/docs/en/claude-directory)). That fact alone rules out syncing `projects/` or `history.jsonl` through git.
 
@@ -189,7 +193,7 @@ The VS Code panel adds a version wrinkle. **The extension bundles its own CLI, a
 
 Personal Claude customization is plain files, which suits git. VS Code's dotfiles support clones **one** repository into every new container and runs its install command ([VS Code: Developing inside a Container](https://code.visualstudio.com/docs/devcontainers/containers)). So put the Claude config in a `claude/` subtree of the same dotfiles repo instead of a second repo:
 
-```
+```text
 dotfiles/
 ├── install.sh                  # shell dotfiles + runs claude/install.sh
 ├── .gitignore                  # whitelist: ignore everything except listed paths
@@ -233,36 +237,36 @@ When you copy the script, treat the allowlist as your own code. Add the hosts ab
 
 ### Decision points
 
-| Decision | Default recommended here | Switch when |
-|---|---|---|
-| Container Claude state scope | Per-project volume `claude-code-config-${devcontainerId}` | You want one login and cross-project resume, and rarely run containers concurrently → shared volume |
-| Container auth | `setup-token` via `--env-file` | You need connectors, Remote Control or claude.ai skill sync → `/login` per volume |
-| Workspace path | Aligned to the WSL path | You use Codespaces or rely on `/workspaces` conventions → default path |
-| Claude install method | Native binary, GPG + SHA256 verified, `/usr/local/bin` | Download layout differs from the snippet → signed apt repo or documented `npm …@X.Y.Z` |
-| Bypass permissions | Disabled in managed settings | Unattended runs on trusted repos behind an updated firewall → allow, keep deny rules |
-| WSL CLI updates | Pin the same version as the image and set `DISABLE_UPDATES` | You prefer freshness in WSL → `autoUpdatesChannel: "stable"` (config dirs are separate, so skew is tolerable) |
-| Copilot | Not installed locally | You want it in every container → install locally; 1.85+ propagates it |
-| Docker engine | Docker Desktop (the only Windows engine VS Code documents) | Licensing or overhead pushes you to Docker CE in WSL → `executeInWSL` + `dockerPath` (works, but outside the support matrix) |
+| Decision                     | Default recommended here                                    | Switch when                                                                                                                  |
+| ---------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Container Claude state scope | Per-project volume `claude-code-config-${devcontainerId}`   | You want one login and cross-project resume, and rarely run containers concurrently → shared volume                          |
+| Container auth               | `setup-token` via `--env-file`                              | You need connectors, Remote Control or claude.ai skill sync → `/login` per volume                                            |
+| Workspace path               | Aligned to the WSL path                                     | You use Codespaces or rely on `/workspaces` conventions → default path                                                       |
+| Claude install method        | Native binary, GPG + SHA256 verified, `/usr/local/bin`      | Download layout differs from the snippet → signed apt repo or documented `npm …@X.Y.Z`                                       |
+| Bypass permissions           | Disabled in managed settings                                | Unattended runs on trusted repos behind an updated firewall → allow, keep deny rules                                         |
+| WSL CLI updates              | Pin the same version as the image and set `DISABLE_UPDATES` | You prefer freshness in WSL → `autoUpdatesChannel: "stable"` (config dirs are separate, so skew is tolerable)                |
+| Copilot                      | Not installed locally                                       | You want it in every container → install locally; 1.85+ propagates it                                                        |
+| Docker engine                | Docker Desktop (the only Windows engine VS Code documents)  | Licensing or overhead pushes you to Docker CE in WSL → `executeInWSL` + `dockerPath` (works, but outside the support matrix) |
 
 ### Unverified items
 
-| # | Claim used above | Status |
-|---|---|---|
-| 1 | Release bucket layout `…/claude-code-releases/<ver>/<platform>/claude` and manifest field `.platforms[<p>].checksum`; where to obtain the GPG public key | Not confirmed in fetched docs; only the manifest/sig URLs and fingerprint are documented |
-| 2 | Native binary runs correctly from `/usr/local/bin` without the installer's launcher | Plausible, undocumented |
-| 3 | `${devcontainerId}` is substituted inside `mounts` taken from an image label, and is stable across rebuilds | Not confirmed; if in doubt keep the mount in the repo devcontainer.json |
-| 4 | `claudeProcessWrapper` argument convention and the shift-and-exec wrapper | Inferred from the setting's description |
-| 5 | The extension honors `CLAUDE_CONFIG_DIR` from `containerEnv` (issue #30538 concerns local macOS) | Expected, untested |
-| 6 | `autoMemoryDirectory` set from `.claude/settings.local.json` with an absolute path shares memory across WSL and container | Design inference |
-| 7 | Stock firewall breaks in-container `/login` and refresh; `setup-token` needs only `api.anthropic.com` | Inference from host lists, untested |
-| 8 | Whether `setup-token` auth receives claude.ai skill and plugin sync; whether tokens can be revoked individually | Not documented in fetched pages |
-| 9 | `${localEnv:HOME}` resolves to the WSL home in the WSL-window flow; `updateRemoteUserUID` behavior in that flow | Not documented explicitly |
-| 10 | `dev.containers.defaultExtensionsIfInstalledLocally: []` fully opts out; current default list beyond Copilot and PRs | Only the 1.85 notes confirmed |
-| 11 | Marketplace IDs `ms-python.python`, `charliermarsh.ruff`, `hashicorp.terraform`, `redhat.vscode-yaml` | Standard IDs, not fetched |
-| 12 | Exact `permissions.deny` path syntax and nesting of `enableWeakerNestedSandbox` under `sandbox` | Keys documented; exact shapes not confirmed |
-| 13 | Atomic rename replacing a symlinked `settings.json` (shown only for credentials) | Extrapolated |
-| 14 | File-locking and concurrency safety of `.claude.json` and `history.jsonl` across WSL↔container bind mounts | Undocumented; maintainer says same-machine protections exist |
-| 15 | `claudeCode.initialPermissionMode` read from synced User settings vs container Remote settings | Docs say user settings only; Remote layer behavior unknown |
+| #   | Claim used above                                                                                                                                         | Status                                                                                   |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| 1   | Release bucket layout `…/claude-code-releases/<ver>/<platform>/claude` and manifest field `.platforms[<p>].checksum`; where to obtain the GPG public key | Not confirmed in fetched docs; only the manifest/sig URLs and fingerprint are documented |
+| 2   | Native binary runs correctly from `/usr/local/bin` without the installer's launcher                                                                      | Plausible, undocumented                                                                  |
+| 3   | `${devcontainerId}` is substituted inside `mounts` taken from an image label, and is stable across rebuilds                                              | Not confirmed; if in doubt keep the mount in the repo devcontainer.json                  |
+| 4   | `claudeProcessWrapper` argument convention and the shift-and-exec wrapper                                                                                | Inferred from the setting's description                                                  |
+| 5   | The extension honors `CLAUDE_CONFIG_DIR` from `containerEnv` (issue #30538 concerns local macOS)                                                         | Expected, untested                                                                       |
+| 6   | `autoMemoryDirectory` set from `.claude/settings.local.json` with an absolute path shares memory across WSL and container                                | Design inference                                                                         |
+| 7   | Stock firewall breaks in-container `/login` and refresh; `setup-token` needs only `api.anthropic.com`                                                    | Inference from host lists, untested                                                      |
+| 8   | Whether `setup-token` auth receives claude.ai skill and plugin sync; whether tokens can be revoked individually                                          | Not documented in fetched pages                                                          |
+| 9   | `${localEnv:HOME}` resolves to the WSL home in the WSL-window flow; `updateRemoteUserUID` behavior in that flow                                          | Not documented explicitly                                                                |
+| 10  | `dev.containers.defaultExtensionsIfInstalledLocally: []` fully opts out; current default list beyond Copilot and PRs                                     | Only the 1.85 notes confirmed                                                            |
+| 11  | Marketplace IDs `ms-python.python`, `charliermarsh.ruff`, `hashicorp.terraform`, `redhat.vscode-yaml`                                                    | Standard IDs, not fetched                                                                |
+| 12  | Exact `permissions.deny` path syntax and nesting of `enableWeakerNestedSandbox` under `sandbox`                                                          | Keys documented; exact shapes not confirmed                                              |
+| 13  | Atomic rename replacing a symlinked `settings.json` (shown only for credentials)                                                                         | Extrapolated                                                                             |
+| 14  | File-locking and concurrency safety of `.claude.json` and `history.jsonl` across WSL↔container bind mounts                                               | Undocumented; maintainer says same-machine protections exist                             |
+| 15  | `claudeCode.initialPermissionMode` read from synced User settings vs container Remote settings                                                           | Docs say user settings only; Remote layer behavior unknown                               |
 
 ## Conclusion
 
