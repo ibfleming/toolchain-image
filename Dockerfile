@@ -38,7 +38,7 @@ FROM base AS mise
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG TARGETARCH
 # renovate: datasource=github-releases depName=jdx/mise
-ARG MISE_VERSION=2026.10.7
+ARG MISE_VERSION=2026.10.8
 ARG MISE_SHA256_AMD64=6eb1b890e90818417ca34c90dbbd47881917d5cd199f31b63b062ea9c6b18d85
 RUN case "${TARGETARCH}" in \
       amd64) arch=x64; sum="${MISE_SHA256_AMD64}" ;; \
