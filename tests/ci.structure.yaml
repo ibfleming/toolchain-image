@@ -53,6 +53,16 @@ commandTests:
     expectedOutput: ["\\Acpp-ok\\ncpp-ok\\ncpp-ok\\n?\\z"]
 
 fileExistenceTests:
+  - name: logging library, readable by everyone, not executable
+    path: /usr/local/lib/toolchain/log.sh
+    shouldExist: true
+    permissions: "-rw-r--r--"
+    uid: 0
+  - name: palette library, readable by everyone, not executable
+    path: /usr/local/lib/toolchain/palette.sh
+    shouldExist: true
+    permissions: "-rw-r--r--"
+    uid: 0
   - name: print-versions
     path: /usr/local/bin/print-versions
     shouldExist: true

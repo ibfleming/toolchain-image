@@ -30,6 +30,11 @@ binary_next_line = true
 [*.sh]
 shell_variant = bash
 
+# Bash scripts follow the Google Shell Style Guide's 80 columns. Scripts move to it as they're
+# converted (see CLAUDE.md); this widens to every *.sh once all are.
+[{scripts/lib/*.sh,tests/log.sh}]
+max_line_length = 80
+
 [{**.zsh,config/zsh/zshrc}]
 shell_variant = zsh
 

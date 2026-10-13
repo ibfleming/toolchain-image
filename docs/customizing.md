@@ -99,6 +99,30 @@ post.d/     prompt, plugins (autosuggestions, syntax highlighting, fzf-tab), zox
 - **Use bash:** set `terminal.integrated.defaultProfile.linux` to `bash` (see above). The image's
   tools don't depend on zsh.
 
+## Logging in your scripts
+
+Both images ship the logging library their own scripts use, at
+`/usr/local/lib/toolchain/log.sh`. Source it from any Bash script (4.2 or newer) to get leveled,
+timestamped lines in the One Dark colors:
+
+```bash
+source /usr/local/lib/toolchain/log.sh
+log::info "deploying ${service}"   # 2026-10-12T13:09:31-0700 INFO  deploy: deploying api
+log::warn "no cache, building from scratch"
+log::fatal "missing KUBECONFIG"   # logs, then exits 1
+```
+
+- **Levels:** `log::debug`, `log::info`, `log::ok` (green, info level), `log::warn`, `log::error`
+  and `log::fatal`. Everything goes to STDERR, so STDOUT stays free for your script's data.
+- **Settings:**
+  - `TOOLCHAIN_LOG_LEVEL`: `debug`, `info` (default), `warn` or `error`.
+  - `TOOLCHAIN_LOG_COLOR`: `auto` (default; color when STDERR is a terminal or in GitHub
+    Actions), `always` or `never`. `NO_COLOR` turns color off in `auto` mode.
+  - `TOOLCHAIN_LOG_TAG`: the name shown in each line (default: the script's file name).
+- **GitHub Actions:** warnings and errors also become annotations on the workflow run.
+- **Colors:** `/usr/local/lib/toolchain/palette.sh` defines the palette (`PALETTE_BLUE='#61afef'`,
+  and so on, each with a 256-color fallback) if you want to match it elsewhere.
+
 ## Prompt (starship)
 
 The shared prompt is `/usr/local/share/toolchain/starship/starship.toml`. A personal

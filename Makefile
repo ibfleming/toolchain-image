@@ -19,7 +19,7 @@ MISE_IMG := toolchain/mise:local
 
 .PHONY: help builder lint fmt spell lock scan check-commits check-pr-title screenshots changelog
 .PHONY: build bake-print shell shell-live shell-kube-demo
-.PHONY: test test-structure test-smoke test-parity test-k9s test-starship test-docker clean
+.PHONY: test test-structure test-smoke test-parity test-k9s test-starship test-docker test-log clean
 
 help: ## List targets
   @grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -30,7 +30,7 @@ builder: ## Create the docker-container buildx builder (keeps attestations)
   @echo "builder: $(BUILDER)"
 
 # Shell files for shfmt (bash + zsh) and shellcheck (bash only: it has no zsh support).
-SH_SCRIPTS := $(wildcard scripts/*.sh tests/*.sh)
+SH_SCRIPTS := $(wildcard scripts/*.sh scripts/lib/*.sh tests/*.sh)
 ZSH_FILES := config/zsh/zshrc $(wildcard config/zsh/*/*.zsh)
 
 # editorconfig-checker's binary is `ec` or `editorconfig-checker` depending on the mise registry.
@@ -39,7 +39,7 @@ EC := $(or $(shell command -v editorconfig-checker 2>/dev/null),$(shell command 
 lint: ## Check formatting + lint on every file (CI gate; `make fmt` fixes most of it)
   $(EC)
   shfmt --diff $(SH_SCRIPTS) $(ZSH_FILES)
-  shellcheck $(SH_SCRIPTS)
+  shellcheck --external-sources $(SH_SCRIPTS)
   RUST_LOG=warn taplo fmt --check
   prettier --check --log-level warn .
   markdownlint-cli2
@@ -113,7 +113,7 @@ shell-kube-demo: ## shell-live with a fake multi-context kubeconfig (no cluster 
     -v "$(CURDIR)/tests/fixtures/kubeconfig.yaml:/fixtures/kubeconfig.yaml:ro" $(DEV_IMG) \
     bash -c 'cp /fixtures/kubeconfig.yaml /tmp/kubeconfig-demo && exec zsh -l'
 
-test: test-structure test-smoke test-parity test-k9s test-starship test-docker ## Run all image tests
+test: test-structure test-smoke test-parity test-k9s test-starship test-docker test-log ## Run all image tests
 
 test-structure:
   container-structure-test test --image $(CI_IMG)  --config tests/ci.structure.yaml
@@ -132,6 +132,9 @@ test-docker: ## Docker outside of Docker: the dev user reaches the host engine v
 test-starship: ## Render the starship k8s segment against the fake kubeconfig
   docker run --rm -u vscode -e TERM=xterm-256color -v "$(CURDIR)/tests:/tests:ro" $(DEV_IMG) \
     bash /tests/starship-kube.sh /tests/fixtures/kubeconfig.yaml
+
+test-log: ## The logging library as installed in the image (levels, colors, annotations)
+  docker run --rm -v "$(CURDIR)/tests/log.sh:/t.sh:ro" $(CI_IMG) bash /t.sh /usr/local/lib/toolchain
 
 test-k9s: ## Validate the seeded k9s config against k9s's JSON schemas (needs network)
   docker run --rm -u vscode -v "$(CURDIR)/tests/k9s-config.sh:/t.sh:ro" \
