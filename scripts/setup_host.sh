@@ -254,6 +254,10 @@ set_login_shell() {
 }
 
 main() {
+  # Work from the home directory, wherever the script was started: mise also
+  # reads the mise.toml of the current directory, and this repository's own
+  # (its development tools, unlocked) must not join the locked install.
+  cd "${HOME}"
   check_system
   install_packages
   install_mise
