@@ -227,6 +227,41 @@ local dotfiles clone **read-only** and running its installer on every container 
 no Git credentials inside the container. See the commented blocks in
 [`devcontainer/devcontainer.json`](../devcontainer/devcontainer.json).
 
+## The same shell on your own machine
+
+`scripts/setup_host.sh` sets up the dev image's shell environment on an Ubuntu or Debian machine,
+from a clone of this repository. Run it as your normal user (it uses sudo where needed):
+
+```sh
+git clone <this repository> ~/src/toolchain-image
+~/src/toolchain-image/scripts/setup_host.sh
+```
+
+It installs zsh and [mise](https://mise.jdx.dev) (from mise's signed apt repository), then puts
+each piece where the image keeps it:
+
+| From the repository                    | On your machine                                                        |
+| -------------------------------------- | ---------------------------------------------------------------------- |
+| `config/zsh`, `config/starship`        | `/usr/local/share/toolchain/{zsh,starship}` (symlinks)                 |
+| `scripts/lib` (logging library)        | `/usr/local/lib/toolchain` (symlink)                                   |
+| `toolchain/mise.toml`, `dev/mise.toml` | `~/.config/mise/conf.d/` (symlinks); the same pinned tools             |
+| both `mise.lock` files                 | merged into `~/.config/mise/mise.lock`; installs are checksum-verified |
+| zsh plugins                            | `/usr/local/share/zsh-plugins/`, at the commits the Dockerfile pins    |
+| `config/home/.zshrc`, k9s config       | `~/.zshrc`, `~/.config/k9s` (k9s only if you have none)                |
+| `config/git/gitconfig`                 | included from `~/.gitconfig`                                           |
+
+It also writes `~/.zshenv` (mise's tools first on `PATH`, generated completions, no duplicate
+`compinit`), the data `welcome` shows (`/etc/toolchain/`), a UTF-8 locale if the system has
+none, and makes zsh your login shell.
+
+- **Updating:** `git pull` updates the config through its symlinks. After a pull that changes tool
+  versions, run the script again; every step is safe to repeat.
+- **Your terminal** needs a Nerd Font (for example CaskaydiaCove Nerd Font Mono).
+- **Not included:** Claude Code (install it with Anthropic's installer) and Docker (install the
+  engine; the image's socket bridge is container-only).
+- **Overrides** work as in the image: `~/.config/zsh/local.zsh`, `~/.config/starship.toml`,
+  `TOOLCHAIN_ZSH_SKIP` in `~/.zshrc`.
+
 ## Your own image family
 
 Fork the repository to change the defaults for everyone who uses your images: tools, theme, policy

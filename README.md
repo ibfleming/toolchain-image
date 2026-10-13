@@ -100,6 +100,9 @@ The first terminal in a new container shows a short greeting:
 
 <img src="docs/assets/welcome.png" alt="The welcome screen in a dev container terminal" width="700">
 
+Want the same shell outside a container? On Ubuntu or Debian, `scripts/setup_host.sh` sets it up
+from a clone of this repository: see [Customizing](docs/customizing.md#the-same-shell-on-your-own-machine).
+
 Run `welcome` to see it again. `welcome tools` lists every pinned tool and what changed, and
 `welcome keys` lists every alias and key binding. `TOOLCHAIN_WELCOME` (`once`, `always`, `off`) sets
 when it appears: see [Customizing](docs/customizing.md#shell-zsh).
