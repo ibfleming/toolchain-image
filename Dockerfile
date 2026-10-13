@@ -87,13 +87,13 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 RUN install -d -m 0755 /usr/local/lib/toolchain
 COPY --chmod=0644 scripts/lib/log.sh scripts/lib/palette.sh /usr/local/lib/toolchain/
 COPY toolchain/mise.toml toolchain/mise.lock /etc/mise/
-COPY --chmod=0755 scripts/link-tools.sh /usr/local/sbin/link-tools
+COPY --chmod=0755 scripts/link_tools.sh /usr/local/sbin/link-tools
 RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN,required=false \
     --mount=type=cache,target=/var/cache/mise,sharing=locked \
     mise -C / install --locked \
   && link-tools \
   && chmod -R a+rX /opt/mise
-COPY --chmod=0755 scripts/print-versions.sh /usr/local/bin/print-versions
+COPY --chmod=0755 scripts/print_versions.sh /usr/local/bin/print-versions
 
 # Keep language tooling from fetching its own toolchains at runtime (parity with the manifest).
 ENV GOTOOLCHAIN=local \
@@ -146,7 +146,7 @@ ARG DOCKER_GPG_FPR=9DC858229FC7DD38854AE2D88D81803C0EBFCD88
 # renovate: datasource=deb depName=docker-ce-cli registryUrl=https://download.docker.com/linux/debian?suite=trixie&components=stable&binaryArch=amd64
 ARG DOCKER_CLI_VERSION=5:29.9.0-1~debian.13~trixie
 COPY config/keys/docker-release.asc /tmp/docker-release.asc
-COPY --chmod=0755 scripts/docker-socket-init.sh /usr/local/sbin/docker-socket-init
+COPY --chmod=0755 scripts/docker_socket_init.sh /usr/local/sbin/docker-socket-init
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     GNUPGHOME="$(mktemp -d)" && export GNUPGHOME \
@@ -240,7 +240,7 @@ RUN install -d -m 0755 /etc/claude-code
 COPY --chmod=0644 config/claude/managed-settings.json /etc/claude-code/managed-settings.json
 RUN install -d -o "${USERNAME}" -g "${USERNAME}" -m 0700 "/home/${USERNAME}/.claude"
 
-COPY --chmod=0755 scripts/gen-zsh-completions.sh /usr/local/sbin/gen-zsh-completions
+COPY --chmod=0755 scripts/gen_zsh_completions.sh /usr/local/sbin/gen-zsh-completions
 RUN gen-zsh-completions
 
 # Shared shell/prompt/git config (root-owned, read-only to the user) ...
