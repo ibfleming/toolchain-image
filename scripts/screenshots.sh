@@ -20,7 +20,7 @@ mkdir -p "$work/out" "$work/sample/.git"
 chmod 0777 "$work/out" # written by the image's vscode user
 
 # Build metadata: next minor after the latest release, compared against that release.
-previous="$(scripts/previous-tools.sh 2>/dev/null || true)"
+previous="$(scripts/previous_tools.sh 2>/dev/null || true)"
 prev_version="$(sed -n 's/^PREVIOUS_VERSION=//p' <<<"$previous")"
 IFS=. read -r major minor _ <<<"${prev_version:-0.0.0}"
 {
