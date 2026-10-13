@@ -27,13 +27,9 @@ indent_size = 4
 switch_case_indent = true
 binary_next_line = true
 
+# Bash scripts follow the Google Shell Style Guide, including its 80 columns (see CLAUDE.md).
 [*.sh]
 shell_variant = bash
-
-# Bash scripts follow the Google Shell Style Guide's 80 columns. Scripts move to it as they're
-# converted (see CLAUDE.md); converted ones have lower_snake names, hence `*_*.sh`. This widens
-# to every *.sh once all are converted.
-[{scripts/lib/*.sh,scripts/*_*.sh,tests/log.sh}]
 max_line_length = 80
 
 [{**.zsh,config/zsh/zshrc}]

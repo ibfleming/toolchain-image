@@ -1,9 +1,25 @@
-#!/usr/bin/env bash
-# Runs INSIDE an image. For every tool in print-versions, execute the binary found on
-# PATH and check it reports the manifest's version. Proves the symlinked binaries are
-# the pinned ones. A new manifest tool without a probe here fails the test on purpose.
+#!/bin/bash
+#
+# Smoke test, run INSIDE an image: for every tool in print-versions, run the
+# binary found on PATH and check that it reports the manifest's version.
+# Proves the symlinked binaries are the pinned ones. A new manifest tool
+# without a probe here fails the test on purpose.
+
 set -euo pipefail
 
+# shellcheck source=scripts/lib/log.sh
+source "${TOOLCHAIN_LIB_DIR:-/usr/local/lib/toolchain}/log.sh"
+
+#######################################
+# Run a tool's version command.
+# Arguments:
+#   Tool name as print-versions reports it.
+# Outputs:
+#   The command's output; for a tool without a probe, a hint (the caller
+#   shows it as the result).
+# Returns:
+#   The command's status; 2 if the tool has no probe.
+#######################################
 probe() {
   case "$1" in
     *opentofu) tofu version ;;
@@ -42,19 +58,28 @@ probe() {
     *neovim) nvim --version ;;
     claude-code) claude --version ;;
     *)
-      echo "smoke: no probe for '$1' - add one to tests/smoke.sh" >&2
+      echo "no probe for '$1': add one to tests/smoke.sh"
       return 2
       ;;
   esac
 }
 
-fail=0
-while IFS='=' read -r tool version; do
-  if out="$(probe "$tool" 2>&1)" && grep -qF "$version" <<<"$out"; then
-    printf 'ok   %-40s %s\n' "$tool" "$version"
-  else
-    printf 'FAIL %-40s want %s, got: %s\n' "$tool" "$version" "$(head -1 <<<"$out")"
-    fail=1
-  fi
-done < <(print-versions)
-exit "$fail"
+main() {
+  local tool version out line
+  local -i failed=0
+  while IFS='=' read -r tool version; do
+    if out="$(probe "${tool}" 2>&1)" \
+      && grep -qF "${version}" <<<"${out}"; then
+      printf -v line '%-40s %s' "${tool}" "${version}"
+      log::ok "${line}"
+    else
+      printf -v line '%-40s want %s, got: %s' "${tool}" "${version}" \
+        "${out%%$'\n'*}"
+      log::error "${line}"
+      failed=1
+    fi
+  done < <(print-versions)
+  return "${failed}"
+}
+
+main "$@"

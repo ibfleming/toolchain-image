@@ -127,18 +127,18 @@ test-parity:
   tests/parity.sh $(CI_IMG) $(DEV_IMG)
 
 test-docker: ## Docker outside of Docker: the dev user reaches the host engine via the socket proxy
-  tests/docker-socket.sh $(DEV_IMG)
+  tests/docker_socket.sh $(DEV_IMG)
 
 test-starship: ## Render the starship k8s segment against the fake kubeconfig
   docker run --rm -u vscode -e TERM=xterm-256color -v "$(CURDIR)/tests:/tests:ro" $(DEV_IMG) \
-    bash /tests/starship-kube.sh /tests/fixtures/kubeconfig.yaml
+    bash /tests/starship_kube.sh /tests/fixtures/kubeconfig.yaml
 
 test-log: ## The logging library as installed in the image (levels, colors, annotations)
   docker run --rm -v "$(CURDIR)/tests/log.sh:/t.sh:ro" $(CI_IMG) bash /t.sh /usr/local/lib/toolchain
 
 test-k9s: ## Validate the seeded k9s config against k9s's JSON schemas (needs network)
-  docker run --rm -u vscode -v "$(CURDIR)/tests/k9s-config.sh:/t.sh:ro" \
-    -v "$(CURDIR)/config/home/.config/k9s:/k:ro" $(DEV_IMG) bash /t.sh /k
+  docker run --rm -u vscode -v "$(CURDIR)/tests/k9s_config.sh:/tests/k9s_config.sh:ro" \
+    -v "$(CURDIR)/config/home/.config/k9s:/k:ro" $(DEV_IMG) bash /tests/k9s_config.sh /k
 
 clean: ## Remove local images
   -docker image rm $(CI_IMG) $(DEV_IMG) $(MISE_IMG)
