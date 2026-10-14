@@ -14,7 +14,8 @@ a requirement**. This page lists every layer you can override, from lightest tou
 | Git defaults                                | Your `~/.gitconfig`                                  |
 | How Docker runs (host engine, DinD, none)   | The socket mount or a feature in `devcontainer.json` |
 | Claude Code permissions                     | A derived image with your own managed policy         |
-| Tools or tool versions                      | A derived image (`FROM` `ci` or `dev`)               |
+| Extra tools for yourself or a project       | `mise use -g <tool>`, or the project's `mise.toml`   |
+| Different versions of the image's tools     | A derived image (`FROM` `ci` or `dev`)               |
 | Everything                                  | Fork the repository and build your own family        |
 
 Changes made only inside a running container (outside the mounted volumes) disappear on rebuild.
@@ -199,6 +200,21 @@ COPY managed-settings.json /etc/claude-code/managed-settings.json
 
 ## Tools and versions
 
+- **Your own extra tools (mise):** in the dev container's shell, `mise use -g <tool>` installs a
+  tool for you, and a project's own `mise.toml` installs its tools. Both go into a personal mise
+  layer in your home directory, kept apart from the image's:
+  - **Config:** `~/.config/mise/config.toml` for your tools (keep it in your dotfiles so it follows
+    you; mise trusts it as global config), and the project's `mise.toml`. The template trusts the
+    opened workspace folder (`MISE_TRUSTED_CONFIG_PATHS`), so a project's `mise.toml` with `[env]`
+    or hooks works without `mise trust`; any other folder still asks.
+  - **Tools:** `~/.local/share/mise`, a volume in the template shared by your containers, so a
+    rebuild doesn't download them again.
+  - **Extras only:** these tools come _after_ the image's on `PATH`, so they can't replace an image
+    tool; a different version of one means a derived image (below). The image's own manifests
+    are hidden from this layer, so nothing of the toolchain is downloaded twice, and `versions`
+    still lists the image's tools.
+  - The zsh module `conf.d/05-mise-user` sets this up; skip it (`TOOLCHAIN_ZSH_SKIP`) to keep mise
+    as the image configures it.
 - **One-off, at runtime:** `sudo apt-get install …` works, but is lost on rebuild.
 - **Per repository:** derive from the image in the repo's own Dockerfile and point
   `devcontainer.json` at it (`"build": {"dockerfile": "Dockerfile"}`):
@@ -211,13 +227,12 @@ COPY managed-settings.json /etc/claude-code/managed-settings.json
 
   CI jobs can do the same with `FROM …/ci`, so both stay in step.
 
-- **For everyone using your images:** add the tool to `toolchain/mise.toml` (CI and dev) or
-  `toolchain/dev/mise.toml` (dev only) in your fork, run `make lock`, and add a probe to
-  `tests/smoke.sh`.
+- **For everyone using your images:** add the tool to `toolchain/mise.toml` (CI and dev),
+  `toolchain/dev/mise.toml` (dev only) or `toolchain/shell/mise.toml` (the shell's own tools:
+  starship, fzf, eza, ...) in your fork, run `make lock`, and add a probe to `tests/smoke.sh`.
 
-Tools live in a root-owned mise data directory and are linked into `/usr/local/bin`. A
-repository's own `mise.toml` isn't activated automatically, so different versions per project
-mean a derived image.
+The image's tools live in a root-owned mise data directory and are linked into `/usr/local/bin`,
+so they are on `PATH` in every process, not only in interactive shells.
 
 ## Personal config that follows you
 

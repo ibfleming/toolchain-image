@@ -19,7 +19,8 @@ MISE_IMG := toolchain/mise:local
 
 .PHONY: help builder lint fmt spell lock scan check-commits check-pr-title screenshots changelog
 .PHONY: build bake-print shell shell-live shell-kube-demo
-.PHONY: test test-structure test-smoke test-parity test-k9s test-starship test-docker test-log test-welcome clean
+.PHONY: test test-structure test-smoke test-parity test-k9s test-starship test-docker clean
+.PHONY: test-log test-welcome test-mise
 
 help: ## List targets
   @grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -55,12 +56,13 @@ spell: ## Spell-check the repo with cspell (runs in the dev image; config: cspel
   docker run --rm -u vscode -e NPM_CONFIG_UPDATE_NOTIFIER=false -v "$(CURDIR):/w:ro" -w /w $(DEV_IMG) \
     npx --yes cspell@10.3.6 lint --no-progress --gitignore '**/*' '.*' 'config/home/**/.*' 'config/home/.config/**'
 
-lock: builder ## Regenerate toolchain/{,dev/}mise.lock using the image's pinned mise
+lock: builder ## Regenerate toolchain/{,dev/,shell/}mise.lock using the image's pinned mise
   docker buildx build --builder $(BUILDER) --target mise --load -t $(MISE_IMG) -q . >/dev/null
-  @for dir in toolchain toolchain/dev; do echo "== $$dir"; \
+  @for dir in toolchain toolchain/dev toolchain/shell; do echo "== $$dir"; \
     docker run --rm -u $$(id -u):$$(id -g) -e HOME=/tmp -e MISE_DATA_DIR=/tmp/mise \
       -e MISE_CACHE_DIR=/tmp/cache -e MISE_LOCKED=0 -e MISE_GLOBAL_CONFIG_FILE=/m/mise.toml \
-      -v "$(CURDIR)/$$dir:/m" -w / $(MISE_IMG) mise lock --global --platform linux-x64; done
+      -v "$(CURDIR)/$$dir:/m" -w / $(MISE_IMG) mise lock --global --platform linux-x64 \
+      && chmod 0644 "$$dir/mise.lock"; done
 
 screenshots: ## Render the README screenshots of `welcome` from the local dev image (FONT=<Nerd Font Mono .ttf>)
   scripts/screenshots.sh
@@ -114,6 +116,7 @@ shell-kube-demo: ## shell-live with a fake multi-context kubeconfig (no cluster 
     bash -c 'cp /fixtures/kubeconfig.yaml /tmp/kubeconfig-demo && exec zsh -l'
 
 TESTS := test-structure test-smoke test-parity test-k9s test-starship test-docker test-log test-welcome
+TESTS += test-mise
 test: $(TESTS) ## Run all image tests
 
 test-structure:
@@ -133,6 +136,9 @@ test-docker: ## Docker outside of Docker: the dev user reaches the host engine v
 test-starship: ## Render the starship k8s segment against the fake kubeconfig
   docker run --rm -u vscode -e TERM=xterm-256color -v "$(CURDIR)/tests:/tests:ro" $(DEV_IMG) \
     bash /tests/starship_kube.sh /tests/fixtures/kubeconfig.yaml
+
+test-mise: ## The personal mise layer: extras install for vscode, never replace image tools (network)
+  tests/mise_user.sh $(DEV_IMG)
 
 test-welcome: ## The welcome box's borders line up for long rows and narrow terminals
   tests/welcome_width.sh $(DEV_IMG)

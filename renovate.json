@@ -56,9 +56,10 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "Dockerfile deps pinned by tag + commit (`# renovate: ... pin=commit`): both are updated together",
-      "managerFilePatterns": ["/(^|/)Dockerfile$/"],
-      "matchStrings": ["# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>\\S+) pin=commit\\s+ARG [A-Z0-9_]+_VERSION=(?<currentValue>\\S+)\\s+ARG [A-Z0-9_]+_COMMIT=(?<currentDigest>[0-9a-f]{40})"]
+      "description": "zsh plugins pinned by tag + commit in config/zsh/plugins.txt: both are updated together",
+      "managerFilePatterns": ["/(^|/)config/zsh/plugins\\.txt$/"],
+      "matchStrings": ["(?<name>\\S+) (?<depName>[\\w.-]+/[\\w.-]+) (?<currentValue>\\S+) (?<currentDigest>[0-9a-f]{40})"],
+      "datasourceTemplate": "github-tags"
     }
   ]
 }
