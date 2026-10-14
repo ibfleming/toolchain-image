@@ -19,7 +19,7 @@ MISE_IMG := toolchain/mise:local
 
 .PHONY: help builder lint fmt spell lock scan check-commits check-pr-title screenshots changelog
 .PHONY: build bake-print shell shell-live shell-kube-demo
-.PHONY: test test-structure test-smoke test-parity test-k9s test-starship test-docker test-log clean
+.PHONY: test test-structure test-smoke test-parity test-k9s test-starship test-docker test-log test-welcome clean
 
 help: ## List targets
   @grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -113,7 +113,8 @@ shell-kube-demo: ## shell-live with a fake multi-context kubeconfig (no cluster 
     -v "$(CURDIR)/tests/fixtures/kubeconfig.yaml:/fixtures/kubeconfig.yaml:ro" $(DEV_IMG) \
     bash -c 'cp /fixtures/kubeconfig.yaml /tmp/kubeconfig-demo && exec zsh -l'
 
-test: test-structure test-smoke test-parity test-k9s test-starship test-docker test-log ## Run all image tests
+TESTS := test-structure test-smoke test-parity test-k9s test-starship test-docker test-log test-welcome
+test: $(TESTS) ## Run all image tests
 
 test-structure:
   container-structure-test test --image $(CI_IMG)  --config tests/ci.structure.yaml
@@ -132,6 +133,9 @@ test-docker: ## Docker outside of Docker: the dev user reaches the host engine v
 test-starship: ## Render the starship k8s segment against the fake kubeconfig
   docker run --rm -u vscode -e TERM=xterm-256color -v "$(CURDIR)/tests:/tests:ro" $(DEV_IMG) \
     bash /tests/starship_kube.sh /tests/fixtures/kubeconfig.yaml
+
+test-welcome: ## The welcome box's borders line up for long rows and narrow terminals
+  tests/welcome_width.sh $(DEV_IMG)
 
 test-log: ## The logging library as installed in the image (levels, colors, annotations)
   docker run --rm -v "$(CURDIR)/tests/log.sh:/t.sh:ro" $(CI_IMG) bash /t.sh /usr/local/lib/toolchain

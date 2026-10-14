@@ -81,7 +81,10 @@ _welcome_main() {
       [[ $line == PRETTY_NAME=* ]] && os=${${line#PRETTY_NAME=}//\"/}
     done
   fi
-  os=${${os/GNU\/Linux /}% \(*\)}
+  # Short and stable: "Debian GNU/Linux 13 (trixie)" -> "Debian 13",
+  # "Ubuntu 24.04.5 LTS" -> "Ubuntu 24.04" (no codename, LTS or point release).
+  os=${${${os/GNU\/Linux /}% \(*\)}% LTS}
+  [[ $os =~ '^(.* [0-9]+\.[0-9]+)\.[0-9]+$' ]] && os=$match[1]
   local revision=${rel[TOOLCHAIN_REVISION]:-} created=${rel[TOOLCHAIN_CREATED]:-}
   local -a meta=()
   [[ -n $revision ]] && meta+=("${revision[1,7]}")
@@ -296,12 +299,15 @@ _welcome_help() {
   )
 }
 
-# Print $rows: boxed with a gradient top and bottom, unboxed when the terminal is narrow, or
-# without any color (--plain, NO_COLOR). A row of `--` is a separator.
+# Print $rows: boxed with a gradient frame, unboxed when the terminal is narrow, or without any
+# color (--plain, NO_COLOR). A row of `--` is a separator. The box is as wide as its widest row
+# (at least $width), so every border lines up; it never grows past the terminal, and rows that
+# would are cut with an ellipsis.
 _welcome_render() {
   # Rows hold literal text such as `$PATH`; print -P must not expand it (starship sets prompt_subst).
   setopt local_options no_prompt_subst no_prompt_bang
   local r
+  local -i inner=$width
   if ((plain)); then
     for r in "${rows[@]}"; do
       if [[ $r == -- ]]; then
@@ -317,10 +323,16 @@ _welcome_render() {
       if [[ $r == -- ]]; then print; else print -P -- "$r"; fi
     done
   else
+    for r in "${rows[@]}"; do
+      [[ $r == -- ]] && continue
+      _welcome_len "$r"
+      ((REPLY + 2 > inner)) && inner=$((REPLY + 2))
+    done
+    ((inner > COLUMNS - 4)) && inner=$((COLUMNS - 4))
     # One left-to-right gradient for the whole frame: each column of the top, bottom and
     # separator lines gets its color, so the left edge is the first color and the right the last.
     local top= bottom= sep= c1 c2 c3 left right
-    local -i i last=$((width + 1))
+    local -i i last=$((inner + 1))
     for ((i = 0; i <= last; i++)); do
       c1=─ c2=─ c3=─
       ((i == 0)) && c1=╭ c2=╰ c3=├
@@ -338,7 +350,12 @@ _welcome_render() {
         print -P -- "$sep%f"
       else
         _welcome_len "$r"
-        print -P -- "%F{$left}│%f $r${(l:width - 2 - REPLY:: :)} %F{$right}│%f"
+        if ((REPLY > inner - 2)); then
+          _welcome_clip "$r" $((inner - 2))
+          r=$REPLY
+          REPLY=$((inner - 2))
+        fi
+        print -P -- "%F{$left}│%f $r${(l:inner - 2 - REPLY:: :)} %F{$right}│%f"
       fi
     done
     print -P -- "$bottom%f"
@@ -378,6 +395,28 @@ _welcome_len() {
   s=${s//\%[fk]/}
   s=${s//\%\%/%}
   REPLY=${#s}
+}
+
+# REPLY = a prompt-escaped string cut to $2 display columns, the last one an ellipsis. Color
+# escapes take no columns and are kept, so the colors up to the cut stay as they were.
+_welcome_clip() {
+  emulate -L zsh -o extended_glob
+  local s=$1 out= token
+  local -i room=$(($2 - 1))
+  while [[ -n $s ]] && ((room > 0)); do
+    if [[ $s == (#b)(%[FK]\{[^\}]#\}|%[fk])* ]]; then
+      token=$match[1]
+    elif [[ $s == %%* ]]; then
+      token=%%
+      ((room--))
+    else
+      token=${s[1]}
+      ((room--))
+    fi
+    out+=$token
+    s=${s:${#token}}
+  done
+  REPLY="$out…%f%k"
 }
 
 # REPLY = color `step` of `steps` along the line from color $1 to color $2 (#rrggbb).
