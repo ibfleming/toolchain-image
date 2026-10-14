@@ -15,7 +15,8 @@
 
 set -euo pipefail
 
-readonly REPO_DIR="${BASH_SOURCE[0]%/*}/.."
+REPO_DIR="$(cd "${BASH_SOURCE[0]%/*}/.." && pwd)"
+readonly REPO_DIR
 readonly IMAGE="${DEV_IMG:-toolchain/dev:local}"
 readonly RESVG="@resvg/resvg-js@2.6.2"
 readonly PROMPT_MARK=$'\e[38;2;198;120;221m❯\e[0m'
@@ -39,6 +40,8 @@ readonly RENDER_BASH='
 
 # shellcheck source=scripts/lib/log.sh
 source "${REPO_DIR}/scripts/lib/log.sh"
+# shellcheck source=scripts/lib/host_path.sh
+source "${REPO_DIR}/scripts/lib/host_path.sh"
 
 WORK=""
 
@@ -96,17 +99,19 @@ write_fixtures() {
 #######################################
 capture_views() {
   local home="/home/vscode"
+  local work
+  work="$(host_path::of "${WORK}")"
   docker run --rm -t -u vscode -e COLUMNS=100 \
     -e SSH_AUTH_SOCK=/tmp/agent.sock -e PROMPT_MARK="${PROMPT_MARK}" \
-    -v "${WORK}/release:/etc/toolchain/release:ro" \
-    -v "${WORK}/previous:/etc/toolchain/previous:ro" \
-    -v "${WORK}/sample:/workspaces/my-service:ro" \
+    -v "${work}/release:/etc/toolchain/release:ro" \
+    -v "${work}/previous:/etc/toolchain/previous:ro" \
+    -v "${work}/sample:/workspaces/my-service:ro" \
     -w /workspaces/my-service \
-    -v "${WORK}/gitconfig:${home}/.gitconfig:ro" \
-    -v "${WORK}/kubeconfig:${home}/.kube/config:ro" \
-    -v "${WORK}/credentials.json:${home}/.claude/.credentials.json:ro" \
-    -v "${WORK}/gh-hosts.yml:${home}/.config/gh/hosts.yml:ro" \
-    -v "${WORK}/out:/out" \
+    -v "${work}/gitconfig:${home}/.gitconfig:ro" \
+    -v "${work}/kubeconfig:${home}/.kube/config:ro" \
+    -v "${work}/credentials.json:${home}/.claude/.credentials.json:ro" \
+    -v "${work}/gh-hosts.yml:${home}/.config/gh/hosts.yml:ro" \
+    -v "${work}/out:/out" \
     "${IMAGE}" zsh -i -c "${CAPTURE_ZSH}" >/dev/null
 }
 
@@ -123,12 +128,13 @@ capture_views() {
 render_pngs() {
   local font="$1"
   local family="$2"
-  local font_path
-  font_path="$(realpath "${font}")"
+  local font_path work
+  font_path="$(host_path::of "$(realpath "${font}")")"
+  work="$(host_path::of "${WORK}")"
   cp "${REPO_DIR}/scripts/screenshots/render.js" "${WORK}/out/"
   docker run --rm -u vscode -e NPM_CONFIG_UPDATE_NOTIFIER=false \
     -e NPM_CONFIG_FUND=false \
-    -v "${WORK}/out:/out" -v "${font_path}:/font.ttf:ro" -w /out \
+    -v "${work}/out:/out" -v "${font_path}:/font.ttf:ro" -w /out \
     "${IMAGE}" bash -c "${RENDER_BASH}" _ "${RESVG}" "${family}"
   cp "${WORK}"/out/welcome*.png "${REPO_DIR}/docs/assets/"
 }
@@ -148,7 +154,10 @@ main() {
   if [[ -z "${FONT:-}" ]]; then
     log::fatal "set FONT to a Nerd Font Mono .ttf file"
   fi
-  WORK="$(mktemp -d)"
+  # In the repository, not /tmp: inside a dev container, the host's Docker
+  # engine can only mount the workspace (see scripts/lib/host_path.sh).
+  mkdir -p "${REPO_DIR}/.tmp"
+  WORK="$(mktemp -d "${REPO_DIR}/.tmp/screenshots.XXXXXX")"
   trap cleanup EXIT
   mkdir -p "${WORK}/out"
   chmod 0777 "${WORK}/out" # written by the image's vscode user

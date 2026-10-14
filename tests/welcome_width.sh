@@ -10,9 +10,13 @@
 set -euo pipefail
 
 readonly LONG_NAME="Acme Enterprise Linux Server for Workstations 9.4.1"
+REPO_DIR="$(cd "${BASH_SOURCE[0]%/*}/.." && pwd)"
+readonly REPO_DIR
 
 # shellcheck source=scripts/lib/log.sh
-source "${BASH_SOURCE[0]%/*}/../scripts/lib/log.sh"
+source "${REPO_DIR}/scripts/lib/log.sh"
+# shellcheck source=scripts/lib/host_path.sh
+source "${REPO_DIR}/scripts/lib/host_path.sh"
 
 IMAGE=""
 FAILED=0
@@ -30,9 +34,11 @@ WORK=""
 render() {
   local pretty="$1"
   local columns="$2"
+  local os_release
   printf 'PRETTY_NAME="%s"\n' "${pretty}" >"${WORK}/os-release"
+  os_release="$(host_path::of "${WORK}/os-release")"
   docker run --rm -t -u vscode -e TERM=xterm-256color \
-    -e COLUMNS="${columns}" -v "${WORK}/os-release:/etc/os-release:ro" \
+    -e COLUMNS="${columns}" -v "${os_release}:/etc/os-release:ro" \
     "${IMAGE}" zsh -i -c welcome \
     | tr -d '\r' \
     | sed 's/\x1b\[[0-9;]*m//g' \
@@ -85,7 +91,10 @@ main() {
   if [[ -z "${IMAGE}" ]]; then
     log::fatal "usage: tests/welcome_width.sh <dev image>"
   fi
-  WORK="$(mktemp -d)"
+  # In the repository, not /tmp: inside a dev container, the host's Docker
+  # engine can only mount the workspace (see scripts/lib/host_path.sh).
+  mkdir -p "${REPO_DIR}/.tmp"
+  WORK="$(mktemp -d "${REPO_DIR}/.tmp/welcome_width.XXXXXX")"
   trap cleanup EXIT
 
   check "Debian keeps the 66-column box" \

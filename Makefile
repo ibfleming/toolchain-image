@@ -52,8 +52,16 @@ fmt: ## Apply formatters in place (shfmt, taplo, prettier, markdownlint fixes); 
   prettier --write --log-level warn .
   markdownlint-cli2 --fix
 
+# Bind mounts are resolved by the Docker engine. Inside a dev container that uses the host's
+# engine, the host doesn't have the container's paths: with LOCAL_WORKSPACE_FOLDER and
+# CONTAINER_WORKSPACE_FOLDER set (the workspace on the host and in the container), translate.
+# Elsewhere HOST_CURDIR is CURDIR.
+HOST_CURDIR := $(if $(and $(LOCAL_WORKSPACE_FOLDER),$(CONTAINER_WORKSPACE_FOLDER),$(filter \
+  $(CONTAINER_WORKSPACE_FOLDER) $(CONTAINER_WORKSPACE_FOLDER)/%,$(CURDIR))),$(patsubst \
+  $(CONTAINER_WORKSPACE_FOLDER)%,$(LOCAL_WORKSPACE_FOLDER)%,$(CURDIR)),$(CURDIR))
+
 spell: ## Spell-check the repo with cspell (runs in the dev image; config: cspell.config.yaml)
-  docker run --rm -u vscode -e NPM_CONFIG_UPDATE_NOTIFIER=false -v "$(CURDIR):/w:ro" -w /w $(DEV_IMG) \
+  docker run --rm -u vscode -e NPM_CONFIG_UPDATE_NOTIFIER=false -v "$(HOST_CURDIR):/w:ro" -w /w $(DEV_IMG) \
     npx --yes cspell@10.3.6 lint --no-progress --gitignore '**/*' '.*' 'config/home/**/.*' 'config/home/.config/**'
 
 lock: builder ## Regenerate toolchain/{,dev/,shell/}mise.lock using the image's pinned mise
@@ -61,7 +69,7 @@ lock: builder ## Regenerate toolchain/{,dev/,shell/}mise.lock using the image's 
   @for dir in toolchain toolchain/dev toolchain/shell; do echo "== $$dir"; \
     docker run --rm -u $$(id -u):$$(id -g) -e HOME=/tmp -e MISE_DATA_DIR=/tmp/mise \
       -e MISE_CACHE_DIR=/tmp/cache -e MISE_LOCKED=0 -e MISE_GLOBAL_CONFIG_FILE=/m/mise.toml \
-      -v "$(CURDIR)/$$dir:/m" -w / $(MISE_IMG) mise lock --global --platform linux-x64 \
+      -v "$(HOST_CURDIR)/$$dir:/m" -w / $(MISE_IMG) mise lock --global --platform linux-x64 \
       && chmod 0644 "$$dir/mise.lock"; done
 
 screenshots: ## Render the README screenshots of `welcome` from the local dev image (FONT=<Nerd Font Mono .ttf>)
@@ -97,12 +105,12 @@ build: builder ## Build ci + dev and load them as toolchain/{ci,dev}:local
 # Interactive dev shell: zsh as vscode, repo at /workspaces/<repo>, true color, host kubeconfig (read-only) if present.
 WS := /workspaces/$(notdir $(CURDIR))
 SHELL_RUN := docker run --rm -it -u vscode -e TERM -e COLORTERM=truecolor \
-  -v "$(CURDIR):$(WS)" -w $(WS) \
+  -v "$(HOST_CURDIR):$(WS)" -w $(WS) \
   $(if $(wildcard $(HOME)/.kube/config),-v "$(HOME)/.kube/config:/home/vscode/.kube/config:ro")
 LIVE_MOUNTS := \
-  -v "$(CURDIR)/config/zsh:/usr/local/share/toolchain/zsh:ro" \
-  -v "$(CURDIR)/config/starship:/usr/local/share/toolchain/starship:ro" \
-  -v "$(CURDIR)/config/home/.config/k9s:/home/vscode/.config/k9s:ro"
+  -v "$(HOST_CURDIR)/config/zsh:/usr/local/share/toolchain/zsh:ro" \
+  -v "$(HOST_CURDIR)/config/starship:/usr/local/share/toolchain/starship:ro" \
+  -v "$(HOST_CURDIR)/config/home/.config/k9s:/home/vscode/.config/k9s:ro"
 
 shell: ## Interactive zsh in the built dev image (what you'd get in the devcontainer)
   $(SHELL_RUN) $(DEV_IMG) zsh -l
@@ -112,7 +120,7 @@ shell-live: ## Same, but config/{zsh,starship,k9s} are mounted from the repo: ed
 
 shell-kube-demo: ## shell-live with a fake multi-context kubeconfig (no cluster needed) to try the k8s prompt
   $(SHELL_RUN) $(LIVE_MOUNTS) -e KUBECONFIG=/tmp/kubeconfig-demo \
-    -v "$(CURDIR)/tests/fixtures/kubeconfig.yaml:/fixtures/kubeconfig.yaml:ro" $(DEV_IMG) \
+    -v "$(HOST_CURDIR)/tests/fixtures/kubeconfig.yaml:/fixtures/kubeconfig.yaml:ro" $(DEV_IMG) \
     bash -c 'cp /fixtures/kubeconfig.yaml /tmp/kubeconfig-demo && exec zsh -l'
 
 TESTS := test-structure test-smoke test-parity test-k9s test-starship test-docker test-log test-welcome
@@ -125,7 +133,7 @@ test-structure:
 
 test-smoke:
   @for img in $(CI_IMG) $(DEV_IMG); do echo "== $$img"; \
-    docker run --rm -v "$(CURDIR)/tests/smoke.sh:/smoke.sh:ro" $$img bash /smoke.sh; done
+    docker run --rm -v "$(HOST_CURDIR)/tests/smoke.sh:/smoke.sh:ro" $$img bash /smoke.sh; done
 
 test-parity:
   tests/parity.sh $(CI_IMG) $(DEV_IMG)
@@ -134,7 +142,7 @@ test-docker: ## Docker outside of Docker: the dev user reaches the host engine v
   tests/docker_socket.sh $(DEV_IMG)
 
 test-starship: ## Render the starship k8s segment against the fake kubeconfig
-  docker run --rm -u vscode -e TERM=xterm-256color -v "$(CURDIR)/tests:/tests:ro" $(DEV_IMG) \
+  docker run --rm -u vscode -e TERM=xterm-256color -v "$(HOST_CURDIR)/tests:/tests:ro" $(DEV_IMG) \
     bash /tests/starship_kube.sh /tests/fixtures/kubeconfig.yaml
 
 test-mise: ## The personal mise layer: extras install for vscode, never replace image tools (network)
@@ -144,11 +152,11 @@ test-welcome: ## The welcome box's borders line up for long rows and narrow term
   tests/welcome_width.sh $(DEV_IMG)
 
 test-log: ## The logging library as installed in the image (levels, colors, annotations)
-  docker run --rm -v "$(CURDIR)/tests/log.sh:/t.sh:ro" $(CI_IMG) bash /t.sh /usr/local/lib/toolchain
+  docker run --rm -v "$(HOST_CURDIR)/tests/log.sh:/t.sh:ro" $(CI_IMG) bash /t.sh /usr/local/lib/toolchain
 
 test-k9s: ## Validate the seeded k9s config against k9s's JSON schemas (needs network)
-  docker run --rm -u vscode -v "$(CURDIR)/tests/k9s_config.sh:/tests/k9s_config.sh:ro" \
-    -v "$(CURDIR)/config/home/.config/k9s:/k:ro" $(DEV_IMG) bash /tests/k9s_config.sh /k
+  docker run --rm -u vscode -v "$(HOST_CURDIR)/tests/k9s_config.sh:/tests/k9s_config.sh:ro" \
+    -v "$(HOST_CURDIR)/config/home/.config/k9s:/k:ro" $(DEV_IMG) bash /tests/k9s_config.sh /k
 
 clean: ## Remove local images
   -docker image rm $(CI_IMG) $(DEV_IMG) $(MISE_IMG)
