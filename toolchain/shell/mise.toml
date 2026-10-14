@@ -1,0 +1,23 @@
+# Shell tools: what the shared zsh config's prompt, aliases and key bindings use. Installed in the
+# `dev` image, and the same file (with its lock) is what a host installs to get the dev shell
+# without the toolchain. Same rules as ../mise.toml: exact versions, `make lock` regenerates
+# mise.lock.
+
+[tools]
+# --- prompt and navigation
+"aqua:starship/starship" = "1.26.0"
+"aqua:junegunn/fzf" = "0.74.5"
+"aqua:ajeetdsouza/zoxide" = "0.10.0"
+"aqua:sharkdp/vivid" = "0.11.1"
+
+# --- modern coreutils
+"aqua:eza-community/eza" = "0.23.5"
+"aqua:sharkdp/bat" = "0.26.1"
+"aqua:sharkdp/fd" = "10.5.0"
+"aqua:BurntSushi/ripgrep" = "15.2.0"
+
+# --- git pager
+"aqua:dandavison/delta" = "0.20.1"
+
+[settings]
+lockfile = true

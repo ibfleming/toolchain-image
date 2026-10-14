@@ -14,6 +14,10 @@
     "source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
     // zsh history across rebuilds.
     "source=zsh-state-${devcontainerId},target=/home/vscode/.local/state/zsh,type=volume",
+    // Your own extra mise tools (`mise use -g ...`), shared by all your containers, so a rebuild
+    // doesn't download them again. The list of them is ~/.config/mise/config.toml: keep it in
+    // your dotfiles to have it back after a rebuild.
+    "source=toolchain-mise-data,target=/home/vscode/.local/share/mise,type=volume",
     // Docker: use the host's engine. The image serves this socket to vscode as
     // /var/run/docker.sock. Remove it for no Docker, or see docs/customizing.md for
     // Docker-in-Docker. Rootless Docker: source=${localEnv:XDG_RUNTIME_DIR}/docker.sock
@@ -24,9 +28,14 @@
     // "source=${localEnv:HOME}/dotfiles,target=/home/vscode/.dotfiles,type=bind,readonly"
   ],
 
-  // Host-path bind mounts in `docker run -v` / compose must use host paths: this is the
-  // workspace folder's path on the host (e.g. -v "$LOCAL_WORKSPACE_FOLDER:/src").
-  "remoteEnv": { "LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}" }
+  "remoteEnv": {
+    // Host-path bind mounts in `docker run -v` / compose must use host paths: this is the
+    // workspace folder's path on the host (e.g. -v "$LOCAL_WORKSPACE_FOLDER:/src").
+    "LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}",
+    // Opening this folder in the container already means trusting it, so mise trusts its
+    // mise.toml too (only this folder; anything else still asks for `mise trust`).
+    "MISE_TRUSTED_CONFIG_PATHS": "${containerWorkspaceFolder}"
+  }
 
   // Optional: apply those dotfiles on every start (idempotent; edits apply without a rebuild).
   // "postStartCommand": "/home/vscode/.dotfiles/install.sh",

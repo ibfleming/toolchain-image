@@ -24,7 +24,8 @@ tool manifest, so "it works in my dev container" means "it works in CI".
 | `dev` | Everything in `ci`, plus: zsh with a modular config and a welcome screen · starship · fzf, zoxide, eza, bat, fd, ripgrep · Docker CLI with buildx and compose (host engine or Docker-in-Docker) · delta, lazygit, GitHub CLI · kubectx/kubens, k9s · Neovim · clangd, lldb, gdb · Claude Code with a secure default policy · VS Code extensions and settings for all of the above |
 
 Exact versions are in [`toolchain/mise.toml`](toolchain/mise.toml) and
-[`toolchain/dev/mise.toml`](toolchain/dev/mise.toml), and in every release's notes.
+[`toolchain/dev/mise.toml`](toolchain/dev/mise.toml) (with the shell's own tools in
+[`toolchain/shell/mise.toml`](toolchain/shell/mise.toml)), and in every release's notes.
 The `dev` image is opinionated but fully overridable: see [Customizing](docs/customizing.md).
 
 ### Image contract
@@ -165,7 +166,8 @@ every lint, test and release tool at the pinned versions from [`mise.toml`](mise
 | `make changelog`                             | Write `CHANGELOG.md` from the commit history (git-cliff)                                               |
 | `make screenshots`                           | Re-render the README's `welcome` screenshots (`FONT=<Nerd Font Mono .ttf>`)                            |
 
-To add a tool: edit `toolchain/mise.toml` (or `toolchain/dev/mise.toml` for dev-only tools), run
+To add a tool: edit `toolchain/mise.toml` (or `toolchain/dev/mise.toml` for dev-only tools, or
+`toolchain/shell/mise.toml` for tools the shell config uses), run
 `make lock`, add a version probe to `tests/smoke.sh` (the test fails without one), then
 `make build test`.
 

@@ -126,14 +126,17 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
   && usermod --shell /usr/bin/zsh "${USERNAME}" \
   && echo 'skip_global_compinit=1' >> /etc/zsh/zshenv
 
-# Dev-only tools (separate manifest; never in ci).
+# Dev-only tools and the shell's tools (separate manifests; never in ci). The shell manifest is
+# also what a host installs for the dev shell without the toolchain.
 COPY toolchain/dev/mise.toml toolchain/dev/mise.lock /etc/mise/dev/
+COPY toolchain/shell/mise.toml toolchain/shell/mise.lock /etc/mise/shell/
 RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN,required=false \
     --mount=type=cache,target=/var/cache/mise,sharing=locked \
-    export MISE_GLOBAL_CONFIG_FILE=/etc/mise/dev/mise.toml \
-  && mise -C / install --locked \
-  && link-tools \
-  && chmod -R a+rX /opt/mise
+    for manifest in /etc/mise/dev/mise.toml /etc/mise/shell/mise.toml; do \
+      MISE_GLOBAL_CONFIG_FILE="${manifest}" mise -C / install --locked \
+        && MISE_GLOBAL_CONFIG_FILE="${manifest}" link-tools || exit 1; \
+    done \
+  && chmod -R a+rX /opt/mise /etc/mise
 
 # Docker client. The engine is the host's (its socket mounted at /var/run/docker-host.sock, see
 # docker-socket-init) or, opt-in, Docker-in-Docker. The CLI comes from Docker's apt repository,
@@ -167,39 +170,21 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
   && rm -rf "${GNUPGHOME}" /tmp/docker-release.asc \
   && docker --version && docker buildx version && docker compose version
 
-# zsh plugins: fetched by git COMMIT, which is content-addressed (git verifies the object hash),
-# so no checksum is needed. The tag is kept for readability; Renovate updates tag + commit together
-# (`pin=commit` annotations, see renovate.json). No plugin manager, no runtime clones.
-# renovate: datasource=github-tags depName=zsh-users/zsh-autosuggestions pin=commit
-ARG ZSH_AUTOSUGGESTIONS_VERSION=v0.7.1
-ARG ZSH_AUTOSUGGESTIONS_COMMIT=e52ee8ca55bcc56a17c828767a3f98f22a68d4eb
-# renovate: datasource=github-tags depName=zsh-users/zsh-syntax-highlighting pin=commit
-ARG ZSH_SYNTAX_HIGHLIGHTING_VERSION=0.8.0
-ARG ZSH_SYNTAX_HIGHLIGHTING_COMMIT=db085e4661f6aafd24e5acb5b2e17e4dd5dddf3e
-# renovate: datasource=github-tags depName=zsh-users/zsh-completions pin=commit
-ARG ZSH_COMPLETIONS_VERSION=0.36.0
-ARG ZSH_COMPLETIONS_COMMIT=28c5bdcaf81bb89e56d0df8267d822c3b8aed9e0
-# renovate: datasource=github-tags depName=Aloxaf/fzf-tab pin=commit
-ARG FZF_TAB_VERSION=v1.3.0
-ARG FZF_TAB_COMMIT=d7e0234614dbe5369fdd760907d12c0e05a4dccc
-# Steps are chained with && so any failure aborts the build (RUN has pipefail but not -e).
-RUN fetch() { \
-      name="$1" && repo="$2" && tag="$3" && commit="$4" && dir="/usr/local/share/zsh-plugins/$1" \
+# zsh plugins, at the git commits pinned in config/zsh/plugins.txt (git verifies a commit by its
+# hash, so no checksum is needed; Renovate updates tag + commit together). No plugin manager, no
+# runtime clones. Each step is chained with && so any failure aborts the build.
+COPY config/zsh/plugins.txt /tmp/zsh-plugins.txt
+RUN grep -vE '^(#|$)' /tmp/zsh-plugins.txt | while read -r name repo tag commit; do \
+      dir="/usr/local/share/zsh-plugins/${name}" \
       && echo "zsh plugin ${name} ${tag} @ ${commit}" \
       && git init -q "${dir}" \
       && git -C "${dir}" fetch -q --depth 1 "https://github.com/${repo}.git" "${commit}" \
       && git -C "${dir}" -c advice.detachedHead=false checkout -q "${commit}" \
-      && test "$(git -C "${dir}" rev-parse HEAD)" = "$(git -C "${dir}" rev-parse "${commit}^{commit}")" \
-      && rm -rf "${dir}/.git"; \
-    } \
-  && fetch zsh-autosuggestions zsh-users/zsh-autosuggestions \
-      "${ZSH_AUTOSUGGESTIONS_VERSION}" "${ZSH_AUTOSUGGESTIONS_COMMIT}" \
-  && fetch zsh-syntax-highlighting zsh-users/zsh-syntax-highlighting \
-      "${ZSH_SYNTAX_HIGHLIGHTING_VERSION}" "${ZSH_SYNTAX_HIGHLIGHTING_COMMIT}" \
-  && fetch zsh-completions zsh-users/zsh-completions \
-      "${ZSH_COMPLETIONS_VERSION}" "${ZSH_COMPLETIONS_COMMIT}" \
-  && fetch fzf-tab Aloxaf/fzf-tab \
-      "${FZF_TAB_VERSION}" "${FZF_TAB_COMMIT}"
+      && test "$(git -C "${dir}" rev-parse HEAD)" = "${commit}" \
+      && rm -rf "${dir}/.git" || exit 1; \
+    done \
+  && test "$(find /usr/local/share/zsh-plugins -mindepth 1 -maxdepth 1 | wc -l)" -eq 4 \
+  && rm /tmp/zsh-plugins.txt
 
 # Claude Code: pinned native binary, verified end to end (vendored release key -> fingerprint ->
 # signed manifest -> per-platform SHA-256). Installed root-owned in /usr/local/bin (outside the
@@ -250,7 +235,8 @@ COPY config/git/gitconfig /etc/gitconfig
 # ... and seeded, user-owned home files (.zshrc, .npmrc, ~/.config/k9s). Pre-creating the
 # XDG dirs makes named volumes mounted there inherit vscode ownership.
 # (install -d only chowns the dirs it is given, so parents are listed explicitly.)
-RUN for d in .config .cache .local .local/bin .local/share .local/state .local/state/zsh; do \
+RUN for d in .config .cache .local .local/bin .local/share .local/share/mise .local/state \
+      .local/state/zsh; do \
       install -d -o "${USERNAME}" -g "${USERNAME}" "/home/${USERNAME}/${d}" || exit 1; \
     done
 COPY --chown=${USERNAME}:${USERNAME} config/home/ /home/${USERNAME}/
