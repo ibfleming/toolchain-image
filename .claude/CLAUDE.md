@@ -54,6 +54,7 @@ Read first: [README.md](../README.md) (usage, development, releases), [docs/cust
   - The image uses no shims: `scripts/link_tools.sh` symlinks resolved binaries into `/usr/local/bin` (`node.npm_shim = false` is required).
   - mise also reads `/etc/mise/` as system config, so `ci` tools appear when dev's config is active; `link-tools` and `print-versions` tolerate this.
 - **container-structure-test:** expands `$VARS` in `args`, so keep `$` out of `tests/*.structure.yaml`. Its regexes need `\n?` for trailing newlines.
+- **Docker from inside a dev container:** the host's engine resolves `docker run -v` sources on the host, where `/workspaces/...` and the container's `/tmp` don't exist. Bind-mount sources go through `$(HOST_CURDIR)` (Makefile) or `host_path::of` (`scripts/lib/host_path.sh`), which translate with `LOCAL_WORKSPACE_FOLDER`/`CONTAINER_WORKSPACE_FOLDER`; work folders that get mounted live in the repo's `.tmp/`, not `mktemp`'s `/tmp`.
 - **Test fixtures:** never use `.invalid` hostnames. Inherited DNS search domains can make them resolve to real hosts; point fake servers at `https://127.0.0.1:1`.
 - **CI:**
   - GitHub runners use the classic image store, which can't load attested images (hence `_local` disables attestations).
