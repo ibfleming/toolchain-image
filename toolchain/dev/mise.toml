@@ -16,6 +16,9 @@
 "aqua:ahmetb/kubectx/kubens" = "0.11.0"
 "aqua:derailed/k9s" = "0.51.0"
 
+# --- node (node and npm are in ../mise.toml)
+"aqua:pnpm/pnpm" = "12.11.2"
+
 # --- editor
 "aqua:neovim/neovim" = "0.12.6"
 

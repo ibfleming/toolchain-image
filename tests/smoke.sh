@@ -56,6 +56,7 @@ probe() {
     aqua:docker/compose) docker compose version ;;
     *kubectx) kubectx --version ;;
     *neovim) nvim --version ;;
+    *pnpm) pnpm --version ;;
     claude-code) claude --version ;;
     *)
       echo "no probe for '$1': add one to tests/smoke.sh"
