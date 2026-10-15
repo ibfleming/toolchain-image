@@ -23,9 +23,14 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN rm -f /etc/apt/apt.conf.d/docker-clean \
   && echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
 
+# Debian security fixes: the release pipeline sets APT_REFRESH to a new value on every run, which
+# changes the build cache key of every RUN from here on, so apt fetches (and upgrades to) the
+# current packages instead of reusing layers from the registry cache. Empty in local builds.
+ARG APT_REFRESH=""
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     apt-get update \
+  && apt-get upgrade -y \
   && apt-get install -y --no-install-recommends \
       bash ca-certificates curl git gnupg grep jq make passwd sudo tar unzip xz-utils \
   && groupadd --gid "${USER_GID}" "${USERNAME}" \

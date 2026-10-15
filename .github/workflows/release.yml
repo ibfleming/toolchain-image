@@ -64,6 +64,7 @@ jobs:
         run: |
           make builder
           export SOURCE_DATE_EPOCH="$(git log -1 --pretty=%ct)"
+          export APT_REFRESH="${{ github.run_id }}-${{ github.run_attempt }}" # current Debian packages
           docker buildx bake --builder toolchain --push --metadata-file bake-meta.json ci dev
           ci="$(jq -er '.ci["containerimage.digest"]' bake-meta.json)"
           dev="$(jq -er '.dev["containerimage.digest"]' bake-meta.json)"

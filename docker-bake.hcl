@@ -20,6 +20,9 @@ variable "SOURCE_URL" { default = "" }
 // image's `welcome` marks what changed since then; empty = no marks (local builds).
 variable "PREVIOUS_VERSION" { default = "" }
 variable "PREVIOUS_TOOLS" { default = "" }
+// A new value per release run (the release workflow passes its run ID): rebuilds the apt layers,
+// so each release ships Debian's current security fixes instead of cached packages. Empty = cache.
+variable "APT_REFRESH" { default = "" }
 
 function "cache_from" {
   params = [names]
@@ -40,6 +43,7 @@ target "_common" {
     SOURCE_URL        = SOURCE_URL
     PREVIOUS_VERSION  = PREVIOUS_VERSION
     PREVIOUS_TOOLS    = PREVIOUS_TOOLS
+    APT_REFRESH       = APT_REFRESH
   }
   attest    = ["type=provenance,mode=max", "type=sbom"]
   secret    = ["id=github_token,env=GITHUB_TOKEN"]
