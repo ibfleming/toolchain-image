@@ -47,7 +47,7 @@ ARG TARGETARCH
 # is pinned here and a Renovate bump is complete on its own. The key expires 2028-01-02: refresh
 # config/keys/mise-release.asc from keys.openpgp.org when verification starts failing.
 # renovate: datasource=github-releases depName=jdx/mise
-ARG MISE_VERSION=2026.10.8
+ARG MISE_VERSION=2026.10.12
 ARG MISE_GPG_FPR=24853EC9F655CE80B48E6C3A8B81C9D17413A06D
 COPY config/keys/mise-release.asc /tmp/mise-release.asc
 RUN case "${TARGETARCH}" in \
