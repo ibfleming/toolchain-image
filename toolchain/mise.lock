@@ -82,13 +82,13 @@ checksum = "sha256:ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045
 url = "https://dl.google.com/go/go1.27.2.linux-amd64.tar.gz"
 
 [[tools.node]]
-version = "24.21.0"
+version = "24.22.0"
 backend = "core:node"
-specifiers = ["24.21.0"]
+specifiers = ["24.22.0"]
 
 [tools.node."platforms.linux-x64"]
-checksum = "sha256:6e1db87ef58b8819e5d5402eff1536491b18edd8eb7bee5ef7897876e88dc5ff"
-url = "https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-x64.tar.gz"
+checksum = "sha256:28ea0a438de9a13bd7891fd758eee6c7819ee8af5442dfd8d45bd65e56d4228c"
+url = "https://nodejs.org/dist/v24.22.0/node-v24.22.0-linux-x64.tar.gz"
 
 [[tools.python]]
 version = "3.14.8"
