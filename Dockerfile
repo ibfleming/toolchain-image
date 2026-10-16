@@ -197,7 +197,7 @@ RUN grep -vE '^(#|$)' /tmp/zsh-plugins.txt | while read -r name repo tag commit;
 # version only changes with the image.
 # Pin the `stable` channel: https://downloads.claude.ai/claude-code-releases/stable
 # renovate: datasource=custom.claude-code-stable depName=claude-code
-ARG CLAUDE_CODE_VERSION=2.1.287
+ARG CLAUDE_CODE_VERSION=2.1.292
 ARG CLAUDE_CODE_GPG_FPR=31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE
 COPY config/keys/claude-code-release.asc /tmp/claude-code-release.asc
 RUN case "${TARGETARCH}" in \
