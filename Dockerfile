@@ -152,7 +152,7 @@ ARG TARGETARCH
 ARG DOCKER_GPG_FPR=9DC858229FC7DD38854AE2D88D81803C0EBFCD88
 # editorconfig-checker-disable-next-line
 # renovate: datasource=deb depName=docker-ce-cli registryUrl=https://download.docker.com/linux/debian?suite=trixie&components=stable&binaryArch=amd64
-ARG DOCKER_CLI_VERSION=5:29.9.0-1~debian.13~trixie
+ARG DOCKER_CLI_VERSION=5:29.9.1-1~debian.13~trixie
 COPY config/keys/docker-release.asc /tmp/docker-release.asc
 COPY --chmod=0755 scripts/docker_socket_init.sh /usr/local/sbin/docker-socket-init
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
