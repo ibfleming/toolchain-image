@@ -10,6 +10,9 @@ and each setting belongs in the layer shared by exactly the people who need it.
 | Editor        | The consumer repository | `.vscode/`                           | `settings.json`, `extensions.json` (recommendations), `tasks.json`, `launch.json`                       |
 | Personal      | Each developer          | Outside version control              | Themes, keybindings, fonts, shell preferences, personal tools, an optional `*.code-workspace`, sign-ins |
 
+[`template/`](../template/) has all of this ready to copy, and each release attaches it with the
+image reference filled in (`template.tar.gz`).
+
 ```text
 Consumer repository
 ├── .devcontainer/       dev container: image pin, mounts, lifecycle scripts

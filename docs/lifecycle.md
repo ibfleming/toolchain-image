@@ -8,6 +8,7 @@ record.
 
 Keep each hook in `devcontainer.json` to a single script call, such as
 `"postCreateCommand": ".devcontainer/scripts/post-create.sh"`, and put the logic in that script.
+[`template/.devcontainer/`](../template/.devcontainer/) has all three, ready to extend.
 
 | Hook         | Runs                                     | Put here                                                                     | Not here                                      |
 | ------------ | ---------------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------- |

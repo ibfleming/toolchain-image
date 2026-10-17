@@ -144,4 +144,7 @@ jobs:
           git-cliff --output CHANGELOG.md
           scripts/release_notes.sh > notes.md
           cat notes.md >> "$GITHUB_STEP_SUMMARY"
-          gh release create "$TAG" CHANGELOG.md --title "$TAG" --notes-file notes.md --verify-tag
+          # The consumer template with this release's dev image filled in.
+          scripts/render_template.sh "$REGISTRY/dev:$VERSION@$DEV_DIGEST" template.tar.gz
+          gh release create "$TAG" CHANGELOG.md template.tar.gz --title "$TAG" --notes-file notes.md \
+            --verify-tag

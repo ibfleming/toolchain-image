@@ -1,0 +1,8 @@
+# Personal VS Code workspaces (*.code-workspace): yours, not the repository's. Commit one only
+# when the repository deliberately defines a multi-root workspace.
+*.code-workspace
+
+# Local secrets and settings
+.env
+.env.*
+!.env.example

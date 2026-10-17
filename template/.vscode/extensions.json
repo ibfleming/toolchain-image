@@ -1,0 +1,5 @@
+// Extensions VS Code suggests on the host. The language extensions come with the dev image
+// (its devcontainer.metadata label), so only what's needed to open the container is here.
+{
+  "recommendations": ["ms-vscode-remote.remote-containers", "editorconfig.editorconfig"]
+}

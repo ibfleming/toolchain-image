@@ -31,6 +31,6 @@
     "no-inline-html": { "allowed_elements": ["br", "details", "summary", "img", "h1"] },
   },
 
-  "globs": ["**/*.md", ".claude/*.md"], // hidden dirs are skipped by `**`
+  "globs": ["**/*.md", ".claude/*.md", "template/.devcontainer/*.md"], // hidden dirs are skipped by `**`
   "gitignore": true, // skips generated CHANGELOG.md and scratch space
 }

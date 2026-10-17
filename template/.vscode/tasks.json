@@ -1,0 +1,35 @@
+// Shared tasks: Terminal → Run Task. Add the project's build, test and run commands here.
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Container: status",
+      "detail": "Lifecycle state of this dev container (dev-status)",
+      "type": "shell",
+      "command": "dev-status",
+      "problemMatcher": []
+    },
+    {
+      "label": "Container: reinstall dependencies",
+      "detail": "Forget that dependencies were installed, then run post-create again",
+      "type": "shell",
+      "command": "dev-reset dependencies && .devcontainer/scripts/post-create.sh",
+      "problemMatcher": []
+    },
+    {
+      "label": "Container: re-run setup",
+      "detail": "Reinstall dependencies, then re-run the start checks (marks the container ready)",
+      "type": "shell",
+      "command": ".devcontainer/scripts/post-start.sh",
+      "dependsOn": ["Container: reinstall dependencies"],
+      "problemMatcher": []
+    }
+    // {
+    //   "label": "test",
+    //   "type": "shell",
+    //   "command": "make test",
+    //   "group": { "kind": "test", "isDefault": true },
+    //   "problemMatcher": []
+    // }
+  ]
+}

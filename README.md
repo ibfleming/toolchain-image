@@ -86,11 +86,25 @@ podTemplate(containers: [
 
 ### As a dev container
 
-Copy [`devcontainer/devcontainer.json`](devcontainer/devcontainer.json) to `.devcontainer/` in
-your repository and fill in the image reference. Editor extensions, settings, the `vscode` user
-and the shell all come from the image, so the file stays short. Anything you set there overrides
-the image. [Architecture](docs/architecture.md) sets out what goes in that file, what goes in
-`.vscode/`, and what stays personal.
+[`template/`](template/) is a starting point for a repository: `.devcontainer/` (the image pin,
+mounts and three small lifecycle scripts), `.vscode/` (shared settings, extension
+recommendations, tasks and debug configurations), a `.gitignore`, a README for contributors, and
+`dev.sh`, which takes a fresh clone to a ready container in one command. Every release attaches it
+as `template.tar.gz` with that release's image reference filled in:
+
+```sh
+cd my-project
+gh release download --repo <owner>/<repo> --pattern template.tar.gz --output - | tar -xz
+./dev.sh   # opens VS Code in the dev container and waits until it's ready
+```
+
+That unpacks into the current folder and replaces any `README.md` or `.gitignore` already there,
+so in an existing repository, unpack it elsewhere and copy in what you need.
+
+Editor extensions, settings, the `vscode` user and the shell all come from the image, so the
+template stays short, and anything you set in it overrides the image.
+[Architecture](docs/architecture.md) sets out what goes in `.devcontainer/`, what goes in
+`.vscode/`, and what stays personal; [Lifecycle](docs/lifecycle.md) covers the scripts.
 
 The first terminal in a new container shows a short greeting:
 

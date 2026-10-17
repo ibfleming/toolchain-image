@@ -1,0 +1,51 @@
+// Dev container for this repository, on the toolchain `dev` image. The image brings the tools,
+// the shell, editor extensions and defaults, and the lifecycle libraries; this file holds only
+// what is specific to this repository, and anything here overrides the image.
+{
+  "name": "my-project",
+
+  // A release, pinned by digest (tags are mutable); Renovate or Dependabot can bump it. Each
+  // toolchain-image release attaches this template as template.tar.gz with the reference filled
+  // in. To try toolchain-image changes, use its local build instead: "toolchain/dev:local".
+  "image": "ghcr.io/<owner>/toolchain/dev:<version>@sha256:<digest>",
+
+  "mounts": [
+    // Claude Code's sign-in and conversations, kept across rebuilds.
+    "source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
+    // zsh history across rebuilds.
+    "source=zsh-state-${devcontainerId},target=/home/vscode/.local/state/zsh,type=volume",
+    // Your own extra mise tools, shared by your containers, so a rebuild doesn't download them again.
+    "source=toolchain-mise-data,target=/home/vscode/.local/share/mise,type=volume",
+    // Your time zone, from the host's clock settings (Linux, and WSL with Docker running inside
+    // WSL; not Docker Desktop for Mac). Use it together with the matching TZ in containerEnv.
+    // Not onto /etc/localtime: that would overwrite the image's UTC zone file.
+    // "source=/etc/localtime,target=/etc/host-localtime,type=bind,readonly",
+    // Docker: the host's engine, served to vscode as /var/run/docker.sock. Remove it for no Docker.
+    "source=/var/run/docker.sock,target=/var/run/docker-host.sock,type=bind"
+  ],
+
+  // containerEnv, not remoteEnv: every process sees it, including shells opened with
+  // `./dev.sh --shell` (docker exec), which don't get VS Code's remoteEnv.
+  "containerEnv": {
+    // Host paths for `docker run -v` from inside the container (the host's engine resolves them).
+    "LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}",
+    "CONTAINER_WORKSPACE_FOLDER": "${containerWorkspaceFolder}",
+    // Opening this folder in the container means trusting it, so mise trusts its mise.toml.
+    "MISE_TRUSTED_CONFIG_PATHS": "${containerWorkspaceFolder}",
+    // Time zone for clocks and log timestamps: the host's TZ variable if it has one, else UTC.
+    // With the /etc/localtime mount above, use ":/etc/host-localtime" instead.
+    "TZ": "${localEnv:TZ:UTC}"
+  },
+
+  // Ports your app listens on, forwarded to the host when VS Code is attached.
+  "forwardPorts": [],
+  // "portsAttributes": { "3000": { "label": "app", "onAutoForward": "notify" } },
+
+  // Lifecycle: one script per hook; see .devcontainer/README.md.
+  "postCreateCommand": ".devcontainer/scripts/post-create.sh",
+  "postStartCommand": ".devcontainer/scripts/post-start.sh",
+  "postAttachCommand": ".devcontainer/scripts/post-attach.sh"
+
+  // Per-repository editor overrides: drop an image extension or change a setting.
+  // "customizations": { "vscode": { "extensions": ["-golang.go"], "settings": {} } }
+}

@@ -12,6 +12,8 @@ bake-meta.json
 
 # Editor settings stay personal; repo formatting policy lives in .editorconfig
 .vscode/
+# ... except the template's, which are shared settings for the repositories that copy it
+!template/.vscode/
 
 # Test and script work folders (in the repository so a dev container can bind-mount them).
 .tmp/
