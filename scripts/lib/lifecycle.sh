@@ -33,6 +33,8 @@ else
 fi
 
 readonly _TOOLCHAIN_LIFECYCLE_LOADED=1
+# Terminal escape sequences (colors, cursor movement), as a sed regex.
+readonly _LIFECYCLE_ESCAPES=$'\e\\[[0-9;?]*[A-Za-z]'
 
 #######################################
 # Set REPLY to the state directory.
@@ -103,12 +105,12 @@ lifecycle::_prefix() {
 #######################################
 # Run one lifecycle stage and record it: <stage>.started, then <stage>.done
 # or <stage>.failed (with the exit status), and the output in <stage>.log
-# (also shown on STDERR). Starting a stage clears `ready` and the stage's
-# previous result. Progress lines name the stage unless the log tag (the
-# script's name) already does. The command runs in a subshell with errexit
-# on, so a failing step stops it. Call it as a plain command, not from a
-# condition (if, ||, !): bash would ignore errexit in the step, so it's
-# refused.
+# (also shown on STDERR, with colors; the log file has them removed).
+# Starting a stage clears `ready` and the stage's previous result. Progress
+# lines name the stage unless the log tag (the script's name) already does.
+# The command runs in a subshell with errexit on, so a failing step stops
+# it. Call it as a plain command, not from a condition (if, ||, !): bash
+# would ignore errexit in the step, so it's refused.
 # Arguments:
 #   Stage name (post-create, post-start, ...), then a command and its
 #   arguments (usually a function of the calling script).
@@ -147,6 +149,8 @@ lifecycle::stage() {
     )
     echo "$?" >"${status_file}"
   ) 2>&1 | tee -a "${dir}/${stage}.log" >&2
+  # Colors stay on the terminal; the log file is for reading with any tool.
+  sed -i "s/${_LIFECYCLE_ESCAPES}//g" "${dir}/${stage}.log"
   status="$(<"${status_file}")"
   rm -f "${status_file}"
   seconds=$((SECONDS - started))

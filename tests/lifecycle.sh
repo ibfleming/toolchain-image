@@ -128,6 +128,16 @@ main() {
   check "another script's progress lines name the stage" \
     matches "${r}" "INFO  bash: post-create: started"
 
+  r="$(run_case color 'TOOLCHAIN_LOG_COLOR=always bash -c "
+    source /usr/local/lib/toolchain/lifecycle.sh
+    step() { log::info hello; printf \"\\e[1;31m red\\e[0m\\n\"; }
+    lifecycle::stage post-create step"')"
+  check "the terminal still gets colors" matches "${r}" $'\e\\[1;31m red'
+  check "the stage log has no escape sequences" \
+    bash -c "! grep -q \$'\\e' '${STATE_ROOT}/color/post-create.log'"
+  check "and keeps the text" grep -q "INFO  bash: hello" \
+    "${STATE_ROOT}/color/post-create.log"
+
   r="$(run_case rerun 'lifecycle::stage post-create true; lifecycle::ready
     lifecycle::stage post-start true; lifecycle::state; echo "state=${REPLY}"')"
   check "starting a stage clears ready" matches "${r}" "state=partial"
