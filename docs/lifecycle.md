@@ -79,6 +79,17 @@ itself, so a marker never claims work that the new container doesn't have.
 | `dev-wait [-t SECONDS]` | Waits until ready (0) or failed (1), or times out (2). Default 600 seconds; 0 waits forever      |
 | `dev-reset [MARKER…]`   | Clears the named markers, or all state, so `once` steps run again the next time their stage runs |
 
+To redo work without a rebuild, clear its marker and run the stage scripts again, in order:
+
+```sh
+dev-reset dependencies
+.devcontainer/scripts/post-create.sh
+.devcontainer/scripts/post-start.sh  # marks the container ready again
+```
+
+Starting any stage clears `ready`, so after re-running `post-create.sh` alone, `dev-status` says
+`partial` until `post-start.sh` (or a restart) marks it ready.
+
 ```text
 $ dev-status
 ready

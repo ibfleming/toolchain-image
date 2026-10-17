@@ -120,6 +120,14 @@ main() {
     matches "${r}" $'called from a condition.*\nrefused=2\n'
   check "and records nothing" lacks cond post-create.started
 
+  r="$(run_case tag 'TOOLCHAIN_LOG_TAG=post-create \
+    lifecycle::stage post-create true')"
+  check "a script named after its stage doesn't repeat the stage name" \
+    matches "${r}" "INFO  post-create: started"
+  r="$(run_case tag2 'lifecycle::stage post-create true')"
+  check "another script's progress lines name the stage" \
+    matches "${r}" "INFO  bash: post-create: started"
+
   r="$(run_case rerun 'lifecycle::stage post-create true; lifecycle::ready
     lifecycle::stage post-start true; lifecycle::state; echo "state=${REPLY}"')"
   check "starting a stage clears ready" matches "${r}" "state=partial"

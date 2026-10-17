@@ -81,12 +81,34 @@ lifecycle::_errexit_probe() {
 }
 
 #######################################
+# Set REPLY to the prefix for a stage's progress lines: nothing when the
+# log tag already names the stage (a post-create.sh running post-create),
+# else "<stage>: ".
+# Globals:
+#   TOOLCHAIN_LOG_TAG
+#   REPLY (set)
+# Arguments:
+#   Stage name.
+#######################################
+lifecycle::_prefix() {
+  local tag="${TOOLCHAIN_LOG_TAG:-${0##*/}}"
+  tag="${tag%.sh}"
+  if [[ "${tag}" == "$1" ]]; then
+    REPLY=""
+  else
+    REPLY="$1: "
+  fi
+}
+
+#######################################
 # Run one lifecycle stage and record it: <stage>.started, then <stage>.done
 # or <stage>.failed (with the exit status), and the output in <stage>.log
 # (also shown on STDERR). Starting a stage clears `ready` and the stage's
-# previous result. The command runs in a subshell with errexit on, so a
-# failing step stops it. Call it as a plain command, not from a condition
-# (if, ||, !): bash would ignore errexit in the step, so it's refused.
+# previous result. Progress lines name the stage unless the log tag (the
+# script's name) already does. The command runs in a subshell with errexit
+# on, so a failing step stops it. Call it as a plain command, not from a
+# condition (if, ||, !): bash would ignore errexit in the step, so it's
+# refused.
 # Arguments:
 #   Stage name (post-create, post-start, ...), then a command and its
 #   arguments (usually a function of the calling script).
@@ -98,7 +120,7 @@ lifecycle::_errexit_probe() {
 lifecycle::stage() {
   local stage="$1"
   shift
-  local dir status_file started
+  local dir status_file started prefix
   local -i status=0 seconds
   lifecycle::_errexit_probe
   if [[ "${REPLY}" == ignored ]]; then
@@ -106,6 +128,8 @@ lifecycle::stage() {
       "||, !), where bash ignores errexit; call it as a plain command"
     return 2
   fi
+  lifecycle::_prefix "${stage}"
+  prefix="${REPLY}"
   lifecycle::dir
   dir="${REPLY}"
   mkdir -p "${dir}"
@@ -114,7 +138,7 @@ lifecycle::stage() {
   : >"${dir}/${stage}.log"
   status_file="${dir}/.${stage}.status"
   started="${SECONDS}"
-  log::info "${stage}: started"
+  log::info "${prefix}started"
   (
     set +e
     (
@@ -128,10 +152,10 @@ lifecycle::stage() {
   seconds=$((SECONDS - started))
   if ((status == 0)); then
     lifecycle::_mark "${stage}.done" "${seconds}s"
-    log::ok "${stage}: done in ${seconds}s"
+    log::ok "${prefix}done in ${seconds}s"
   else
     lifecycle::_mark "${stage}.failed" "exit=${status}"
-    log::error "${stage}: failed (exit ${status}); log: ${dir}/${stage}.log"
+    log::error "${prefix}failed (exit ${status}); log: ${dir}/${stage}.log"
   fi
   return "${status}"
 }
