@@ -57,7 +57,7 @@ development environment that every repository shares.
 - The logger (`/usr/local/lib/toolchain/log.sh`): consistent, leveled output on STDERR.
 - The shell, prompt and git defaults.
 - The authentication patterns: SSH agent forwarding, sign-ins kept in volumes, no secrets in images
-  or repositories.
+  or repositories ([Authentication](auth.md)).
 
 **Escalation:** when several repositories need the same customization, it's a candidate for the
 platform. Open an issue here rather than copying it into a third repository.
