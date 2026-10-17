@@ -87,10 +87,12 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
   && apt-get install -y --no-install-recommends \
       autoconf automake build-essential ccache clang clang-format clang-tidy file \
       libssl-dev libtool lld pkg-config zlib1g-dev
-# Shell libraries for the image's scripts and for users' own: logging (log.sh) and the One
-# Dark palette. The dir is created first: COPY --chmod=0644 would create it without search bits.
+# Shell libraries for the image's scripts and for users' own: logging (log.sh), the One Dark
+# palette, dev container lifecycle state (lifecycle.sh) and readiness checks (validate.sh). The
+# dir is created first: COPY --chmod=0644 would create it without search bits.
 RUN install -d -m 0755 /usr/local/lib/toolchain
-COPY --chmod=0644 scripts/lib/log.sh scripts/lib/palette.sh /usr/local/lib/toolchain/
+COPY --chmod=0644 scripts/lib/log.sh scripts/lib/palette.sh scripts/lib/lifecycle.sh \
+      scripts/lib/validate.sh /usr/local/lib/toolchain/
 COPY toolchain/mise.toml toolchain/mise.lock /etc/mise/
 COPY --chmod=0755 scripts/link_tools.sh /usr/local/sbin/link-tools
 RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN,required=false \
@@ -202,6 +204,12 @@ RUN install -d -m 0755 /etc/claude-code
 # sign-in survives a rebuild; pre-creating it makes the volume vscode-owned.
 COPY --chmod=0644 config/claude/managed-settings.json /etc/claude-code/managed-settings.json
 RUN install -d -o "${USERNAME}" -g "${USERNAME}" -m 0700 "/home/${USERNAME}/.claude"
+
+# Lifecycle state for dev container scripts (scripts/lib/lifecycle.sh): dev-status reports it,
+# dev-wait blocks until the container is ready, dev-reset clears it.
+COPY --chmod=0755 scripts/dev_status.sh /usr/local/bin/dev-status
+COPY --chmod=0755 scripts/dev_wait.sh /usr/local/bin/dev-wait
+COPY --chmod=0755 scripts/dev_reset.sh /usr/local/bin/dev-reset
 
 COPY --chmod=0755 scripts/gen_zsh_completions.sh /usr/local/sbin/gen-zsh-completions
 RUN gen-zsh-completions
