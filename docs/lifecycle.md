@@ -18,6 +18,47 @@ Keep each hook in `devcontainer.json` to a single script call, such as
 
 Long-running services belong in Compose or a task, not in a hook.
 
+## Hook order
+
+Every hook but `initializeCommand` runs inside the container. For each hook, the image's own
+command (from its `devcontainer.metadata` label, such as the Docker socket setup) runs before
+yours, and a failing command skips every hook after it.
+
+| When                                  | Hooks, in order                                                                                                                          |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| The container is created (or rebuilt) | `initializeCommand` (host) → `onCreateCommand` → `updateContentCommand` → `postCreateCommand` → `postStartCommand` → `postAttachCommand` |
+| It starts again                       | `initializeCommand` (host) → `postStartCommand` → `postAttachCommand`                                                                    |
+| VS Code attaches to it                | `postAttachCommand`                                                                                                                      |
+
+**VS Code doesn't wait for all of them.** By default (`"waitFor": "updateContentCommand"`) the
+window opens once `updateContentCommand` is done, while `postCreateCommand` may still be running.
+That's what `dev-status` and `dev-wait` are for. Setting `"waitFor": "postCreateCommand"` holds the
+window until dependencies are installed, at the cost of a blank window for that long.
+
+**`onCreateCommand` and `updateContentCommand`** matter for prebuilt environments (Codespaces
+prebuilds, `devcontainer build`), whose result includes what they did. Locally they behave like an
+earlier `postCreateCommand`, so the template doesn't use them; move dependency installation there
+if you adopt prebuilds.
+
+### `initializeCommand`: on the host
+
+`initializeCommand` runs on the host, before the container is created or started, every time the
+folder is opened. The template leaves it out, and it's best kept out:
+
+- **It runs in the host's shell,** whatever that is: `sh` on Linux and macOS, and on Windows the
+  Windows command line, unless the Dev Containers extension runs in WSL. A command that works on one
+  host breaks on another, against the promise that a host needs only Git, Docker and VS Code.
+- **The image's tools and libraries aren't there:** no logger, no lifecycle state.
+
+Use it only for what must happen before Docker starts the container. The usual case is making sure
+a bind-mount source exists, since a missing source makes container creation fail (an optional
+`~/.kube`, or a `.env` copied from `.env.example`). Prefer the array form, which runs one program
+directly, without a shell, so a program every host has behaves the same everywhere:
+
+```jsonc
+"initializeCommand": ["git", "submodule", "update", "--init"]
+```
+
 ## The libraries
 
 Both live in `/usr/local/lib/toolchain/` next to `log.sh`, and log through it (to STDERR). Source

@@ -82,6 +82,7 @@ words:
   - pids
   - pipefail
   - powerline
+  - prebuilds
   - procps
   - PYTHONIOENCODING
   - RECIPEPREFIX
