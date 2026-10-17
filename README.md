@@ -216,5 +216,7 @@ the k9s skin, also Apache-2.0).
 ## Documentation
 
 - [Customizing](docs/customizing.md): every layer you can override
+- [Lifecycle](docs/lifecycle.md): what goes in `postCreate`/`postStart`/`postAttach`, the lifecycle
+  and validation libraries, and `dev-status`, `dev-wait` and `dev-reset`
 - [Design records](docs/design/README.md): the research behind the project, and where the
   implementation differs from it

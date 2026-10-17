@@ -20,7 +20,7 @@ MISE_IMG := toolchain/mise:local
 .PHONY: help builder lint fmt spell lock scan check-commits check-pr-title screenshots changelog
 .PHONY: build bake-print shell shell-live shell-kube-demo
 .PHONY: test test-structure test-smoke test-parity test-k9s test-starship test-docker clean
-.PHONY: test-log test-welcome test-mise
+.PHONY: test-log test-welcome test-mise test-lifecycle
 
 help: ## List targets
   @grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -124,6 +124,7 @@ shell-kube-demo: ## shell-live with a fake multi-context kubeconfig (no cluster 
     bash -c 'cp /fixtures/kubeconfig.yaml /tmp/kubeconfig-demo && exec zsh -l'
 
 TESTS := test-structure test-smoke test-parity test-k9s test-starship test-docker test-log test-welcome
+TESTS += test-lifecycle
 TESTS += test-mise
 test: $(TESTS) ## Run all image tests
 
@@ -150,6 +151,9 @@ test-mise: ## The personal mise layer: extras install for vscode, never replace 
 
 test-welcome: ## The welcome box's borders line up for long rows and narrow terminals
   tests/welcome_width.sh $(DEV_IMG)
+
+test-lifecycle: ## Lifecycle state, validation checks and dev-status/dev-wait/dev-reset, as vscode
+  docker run --rm -u vscode -v "$(HOST_CURDIR)/tests/lifecycle.sh:/t.sh:ro" $(DEV_IMG) bash /t.sh
 
 test-log: ## The logging library as installed in the image (levels, colors, annotations)
   docker run --rm -v "$(HOST_CURDIR)/tests/log.sh:/t.sh:ro" $(CI_IMG) bash /t.sh /usr/local/lib/toolchain
