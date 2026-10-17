@@ -50,6 +50,7 @@ probe() {
     *ripgrep) rg --version ;;
     *delta) delta --version ;;
     *lazygit) lazygit --version ;;
+    *lazydocker) lazydocker --version ;;
     aqua:cli/cli) gh --version ;;
     *kubens) kubens --version ;;
     aqua:docker/buildx) docker buildx version ;;

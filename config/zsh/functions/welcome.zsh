@@ -197,7 +197,7 @@ _welcome_main() {
   fi
   rows+=(--)
 
-  _welcome_pack k kubectl kctx/kns ctx/ns lg lazygit tf tofu z jump \
+  _welcome_pack k kubectl kctx/kns ctx/ns lg lazygit lzd lazydocker tf tofu z jump \
     '^R' history '^T' files 'Esc Esc' sudo fe/fcd fuzzy versions ''
 
   # Tip of the day: one per day of the year, in order.
