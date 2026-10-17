@@ -1,0 +1,11 @@
+// Editor behavior shared by everyone on this repository. Personal preferences (theme, font,
+// keybindings) belong in your user settings, not here.
+{
+  "editor.formatOnSave": true,
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "files.trimTrailingWhitespace": true,
+  // Markdown uses two trailing spaces for a line break.
+  "[markdown]": { "files.trimTrailingWhitespace": false }
+}

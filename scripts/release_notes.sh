@@ -31,9 +31,11 @@ print_changes() {
 }
 
 #######################################
-# Print the image references, floating tags and verification commands.
+# Print the image references, floating tags, the template download and the
+# verification commands.
 # Globals:
-#   REGISTRY, VERSION, CI_DIGEST, DEV_DIGEST, IDENTITY, OIDC_ISSUER
+#   REGISTRY, VERSION, CI_DIGEST, DEV_DIGEST, IDENTITY, OIDC_ISSUER,
+#   GITHUB_REPOSITORY
 # Outputs:
 #   Markdown to STDOUT.
 #######################################
@@ -50,6 +52,17 @@ print_images() {
 | \`dev\` | \`${REGISTRY}/dev:${VERSION}@${DEV_DIGEST}\` |
 
 Floating tags ${floating} also point here. Consumers pin the digest.
+
+### Start a repository
+
+\`template.tar.gz\` is the repository template, with this release's \`dev\`
+image filled in:
+
+\`\`\`sh
+gh release download v${VERSION} --repo ${GITHUB_REPOSITORY:-<owner>/<repo>} \\
+  --pattern template.tar.gz --output - | tar -xz
+./dev.sh
+\`\`\`
 
 ### Verify
 

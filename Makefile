@@ -20,7 +20,7 @@ MISE_IMG := toolchain/mise:local
 .PHONY: help builder lint fmt spell lock scan check-commits check-pr-title screenshots changelog
 .PHONY: build bake-print shell shell-live shell-kube-demo
 .PHONY: test test-structure test-smoke test-parity test-k9s test-starship test-docker clean
-.PHONY: test-log test-welcome test-mise test-lifecycle
+.PHONY: test-log test-welcome test-mise test-lifecycle test-template
 
 help: ## List targets
   @grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -31,7 +31,9 @@ builder: ## Create the docker-container buildx builder (keeps attestations)
   @echo "builder: $(BUILDER)"
 
 # Shell files for shfmt (bash + zsh) and shellcheck (bash only: it has no zsh support).
-SH_SCRIPTS := $(wildcard scripts/*.sh scripts/lib/*.sh tests/*.sh)
+SH_SCRIPTS := $(wildcard scripts/*.sh scripts/lib/*.sh tests/*.sh template/.devcontainer/scripts/*.sh)
+# template/dev.sh is POSIX sh (macOS still ships bash 3.2); shfmt and shellcheck read its shebang.
+SH_SCRIPTS += template/dev.sh
 ZSH_FILES := config/zsh/zshrc $(wildcard config/zsh/*/*.zsh)
 
 # editorconfig-checker's binary is `ec` or `editorconfig-checker` depending on the mise registry.
@@ -62,7 +64,8 @@ HOST_CURDIR := $(if $(and $(LOCAL_WORKSPACE_FOLDER),$(CONTAINER_WORKSPACE_FOLDER
 
 spell: ## Spell-check the repo with cspell (runs in the dev image; config: cspell.config.yaml)
   docker run --rm -u vscode -e NPM_CONFIG_UPDATE_NOTIFIER=false -v "$(HOST_CURDIR):/w:ro" -w /w $(DEV_IMG) \
-    npx --yes cspell@10.3.6 lint --no-progress --gitignore '**/*' '.*' 'config/home/**/.*' 'config/home/.config/**'
+    npx --yes cspell@10.3.6 lint --no-progress --gitignore '**/*' '.*' 'config/home/**/.*' 'config/home/.config/**' \
+    'template/.*' 'template/.devcontainer/**' 'template/.vscode/**'
 
 lock: builder ## Regenerate toolchain/{,dev/,shell/}mise.lock using the image's pinned mise
   docker buildx build --builder $(BUILDER) --target mise --load -t $(MISE_IMG) -q . >/dev/null
@@ -124,7 +127,7 @@ shell-kube-demo: ## shell-live with a fake multi-context kubeconfig (no cluster 
     bash -c 'cp /fixtures/kubeconfig.yaml /tmp/kubeconfig-demo && exec zsh -l'
 
 TESTS := test-structure test-smoke test-parity test-k9s test-starship test-docker test-log test-welcome
-TESTS += test-lifecycle
+TESTS += test-lifecycle test-template
 TESTS += test-mise
 test: $(TESTS) ## Run all image tests
 
@@ -154,6 +157,9 @@ test-welcome: ## The welcome box's borders line up for long rows and narrow term
 
 test-lifecycle: ## Lifecycle state, validation checks and dev-status/dev-wait/dev-reset, as vscode
   docker run --rm -u vscode -v "$(HOST_CURDIR)/tests/lifecycle.sh:/t.sh:ro" $(DEV_IMG) bash /t.sh
+
+test-template: ## The consumer template end to end: devcontainer up, lifecycle ready, dev.sh (host; Node.js)
+  tests/template.sh $(DEV_IMG)
 
 test-log: ## The logging library as installed in the image (levels, colors, annotations)
   docker run --rm -v "$(HOST_CURDIR)/tests/log.sh:/t.sh:ro" $(CI_IMG) bash /t.sh /usr/local/lib/toolchain
