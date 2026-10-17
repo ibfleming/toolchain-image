@@ -7,12 +7,6 @@
     "enabled": true,
     "schedule": ["before 6am on monday"]
   },
-  "customDatasources": {
-    "claude-code-stable": {
-      "defaultRegistryUrlTemplate": "https://downloads.claude.ai/claude-code-releases/stable",
-      "format": "plain"
-    }
-  },
   "packageRules": [
     {
       "description": "Image toolchain manifests (ci + dev): build(toolchain)",

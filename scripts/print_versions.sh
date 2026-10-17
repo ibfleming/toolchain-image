@@ -1,9 +1,8 @@
 #!/bin/bash
 #
 # Print the image's pinned toolchain as sorted `tool=version` lines: the ci
-# manifest, plus the dev and shell manifests when present (dev image), plus
-# Claude Code (pinned in the Dockerfile, not mise). Installed in the images
-# as /usr/local/bin/print-versions.
+# manifest, plus the dev and shell manifests when present (dev image).
+# Installed in the images as /usr/local/bin/print-versions.
 #
 # STDOUT is the data: the parity and smoke tests, /etc/toolchain/versions
 # and the release notes all read it.
@@ -21,7 +20,6 @@ readonly -a EXTRA_MANIFESTS=(
   /etc/mise/dev/mise.toml
   /etc/mise/shell/mise.toml
 )
-readonly CLAUDE_BIN="/usr/local/bin/claude"
 # Installed versions of every tool in `mise ls --json` output.
 # shellcheck disable=SC2016 # jq variables, not shell ones
 readonly JQ_INSTALLED='to_entries[] | .key as $t | .value[]
@@ -48,22 +46,17 @@ list_mise() {
 # config, so ci tools can repeat in the dev listing).
 # Globals:
 #   CI_MANIFEST, EXTRA_MANIFESTS
-#   CLAUDE_BIN
 # Outputs:
 #   `tool=version` lines to STDOUT.
 #######################################
 list_all() {
-  local claude_version manifest
+  local manifest
   list_mise "${CI_MANIFEST}"
   for manifest in "${EXTRA_MANIFESTS[@]}"; do
     if [[ -f "${manifest}" ]]; then
       list_mise "${manifest}"
     fi
   done
-  if [[ -x "${CLAUDE_BIN}" ]]; then
-    claude_version="$("${CLAUDE_BIN}" --version)"
-    echo "claude-code=${claude_version%% *}"
-  fi
 }
 
 main() {
