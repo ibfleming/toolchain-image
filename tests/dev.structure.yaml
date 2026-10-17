@@ -7,8 +7,6 @@ metadataTest:
   envVars:
     - key: CLAUDE_CONFIG_DIR
       value: /home/vscode/.claude
-    - key: DISABLE_UPDATES
-      value: "1"
   labels:
     - key: devcontainer.metadata
       value: '.*"remoteUser":"vscode".*'
@@ -25,27 +23,21 @@ commandTests:
     args: [vscode, -c, "cat /etc/claude-code/managed-settings.json"]
     expectedOutput: ['"disableBypassPermissionsMode": "disable"']
 
-  - name: claude loads the managed policy without errors (as vscode, offline-safe)
-    command: su
-    args: [vscode, -c, "timeout 60 claude doctor </dev/null 2>&1"]
-    expectedOutput: ["Running: native"]
-    excludedOutput: ["Invalid settings", "EACCES"]
-
-  - name: a planted ~/.local/bin/claude cannot shadow the real one (user bins are last on PATH)
+  - name: a planted ~/.local/bin/gh cannot shadow the real one (user bins are last on PATH)
     command: su
     args:
       - vscode
       - -c
       - >-
-        mkdir -p ~/.local/bin && printf '#!/bin/sh\necho FAKE\n' > ~/.local/bin/claude
-        && chmod +x ~/.local/bin/claude && zsh -i -c 'claude --version'
-    expectedOutput: ["\\(Claude Code\\)"]
+        mkdir -p ~/.local/bin && printf '#!/bin/sh\necho FAKE\n' > ~/.local/bin/gh
+        && chmod +x ~/.local/bin/gh && zsh -i -c 'gh --version'
+    expectedOutput: ["\\Agh version [0-9]+"]
     excludedOutput: ["FAKE"]
 
-  - name: claude runs, pinned, from the root-owned path
-    command: su
-    args: [vscode, -c, "command -v claude; claude --version"]
-    expectedOutput: ["\\A/usr/local/bin/claude\\n[0-9]+\\.[0-9]+\\.[0-9]+ \\(Claude Code\\)"]
+  - name: no Claude Code CLI in the image (the VS Code extension brings its own)
+    command: bash
+    args: ["-c", "command -v claude || echo none"]
+    expectedOutput: ["\\Anone\\n?\\z"]
 
   - name: dev conveniences present
     command: which
@@ -95,7 +87,7 @@ commandTests:
     expectedOutput:
       - "dev  v\\d+\\.\\d+\\.\\d+"
       - "kubectl \\d+\\.\\d+\\.\\d+"
-      - "claude \\d+\\.\\d+\\.\\d+"
+      - "gh \\d+\\.\\d+\\.\\d+"
     excludedOutput: ["\\x1b", "%F"]
     excludedError: [".+"]
 
@@ -104,7 +96,7 @@ commandTests:
     args: [vscode, -c, "zsh -i -c 'welcome tools --plain; welcome keys --plain'"]
     expectedOutput:
       - "tools pinned"
-      - "claude-code \\d+\\.\\d+\\.\\d+"
+      - "cli \\d+\\.\\d+\\.\\d+"
       - "kubens \\d+"
       - "gpf push --lease"
       - "Esc Esc sudo"
@@ -122,12 +114,6 @@ fileExistenceTests:
     path: /etc/sudoers.d/vscode
     shouldExist: true
     permissions: "-r--r-----"
-  - name: claude binary is root-owned and not user-writable
-    path: /usr/local/bin/claude
-    shouldExist: true
-    permissions: "-rwxr-xr-x"
-    uid: 0
-    gid: 0
   - name: managed policy is root-owned, world-readable
     path: /etc/claude-code/managed-settings.json
     shouldExist: true

@@ -191,42 +191,15 @@ RUN grep -vE '^(#|$)' /tmp/zsh-plugins.txt | while read -r name repo tag commit;
   && test "$(find /usr/local/share/zsh-plugins -mindepth 1 -maxdepth 1 | wc -l)" -eq 4 \
   && rm /tmp/zsh-plugins.txt
 
-# Claude Code: pinned native binary, verified end to end (vendored release key -> fingerprint ->
-# signed manifest -> per-platform SHA-256). Installed root-owned in /usr/local/bin (outside the
-# user's home and volumes); DISABLE_UPDATES blocks `claude update` / `claude install`, so the
-# version only changes with the image.
-# Pin the `stable` channel: https://downloads.claude.ai/claude-code-releases/stable
-# renovate: datasource=custom.claude-code-stable depName=claude-code
-ARG CLAUDE_CODE_VERSION=2.1.292
-ARG CLAUDE_CODE_GPG_FPR=31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE
-COPY config/keys/claude-code-release.asc /tmp/claude-code-release.asc
-RUN case "${TARGETARCH}" in \
-      amd64) plat=linux-x64 ;; \
-      arm64) plat=linux-arm64 ;; \
-      *) echo "unsupported TARGETARCH=${TARGETARCH}" >&2; exit 1 ;; \
-    esac \
-  && GNUPGHOME="$(mktemp -d)" && export GNUPGHOME \
-  && gpg --batch --quiet --import /tmp/claude-code-release.asc \
-  && gpg --batch --with-colons --fingerprint | grep -q "^fpr:::::::::${CLAUDE_CODE_GPG_FPR}:" \
-  && base="https://downloads.claude.ai/claude-code-releases/${CLAUDE_CODE_VERSION}" \
-  && curl -fsSLo /tmp/manifest.json "${base}/manifest.json" \
-  && curl -fsSLo /tmp/manifest.json.sig "${base}/manifest.json.sig" \
-  && gpg --batch --verify /tmp/manifest.json.sig /tmp/manifest.json \
-  && test "$(jq -r .version /tmp/manifest.json)" = "${CLAUDE_CODE_VERSION}" \
-  && curl -fsSLo /usr/local/bin/claude "${base}/${plat}/claude" \
-  && want="$(jq -er --arg p "${plat}" '.platforms[$p].checksum' /tmp/manifest.json)" \
-  && echo "${want}  /usr/local/bin/claude" | sha256sum -c - \
-  && chmod 0755 /usr/local/bin/claude \
-  && rm -rf "${GNUPGHOME}" /tmp/manifest.json /tmp/manifest.json.sig /tmp/claude-code-release.asc \
-  && claude --version
-
 # The policy dir is created explicitly: `COPY --chmod=0644` would otherwise create it 0644
 # (no search bit), leaving the policy unreadable to vscode and so silently ignored.
 RUN install -d -m 0755 /etc/claude-code
 
-# Managed policy: Claude Code's highest-precedence settings, root-owned. A secure default for
-# every container; derived images can replace it (see docs/customizing.md). Per-project Claude state lives in
-# a volume at ~/.claude (CLAUDE_CONFIG_DIR); pre-creating it makes the volume vscode-owned.
+# Managed policy: Claude Code's highest-precedence settings, root-owned. The image ships no Claude
+# Code CLI; the VS Code extension runs its own bundled one, which reads this policy. A secure
+# default for every container; derived images can replace it (see docs/customizing.md).
+# Per-project Claude state lives in a volume at ~/.claude (CLAUDE_CONFIG_DIR), so the extension's
+# sign-in survives a rebuild; pre-creating it makes the volume vscode-owned.
 COPY --chmod=0644 config/claude/managed-settings.json /etc/claude-code/managed-settings.json
 RUN install -d -o "${USERNAME}" -g "${USERNAME}" -m 0700 "/home/${USERNAME}/.claude"
 
@@ -247,11 +220,10 @@ RUN for d in .config .cache .local .local/bin .local/share .local/share/mise .lo
 COPY --chown=${USERNAME}:${USERNAME} config/home/ /home/${USERNAME}/
 
 # User bin dirs come AFTER the system ones, so a stray file in ~/.local/bin (from `npm -g`, a
-# script, or an agent) can't silently shadow the image's pinned tools (claude, git, kubectl, ...).
+# script, or an agent) can't silently shadow the image's pinned tools (git, gh, kubectl, ...).
 ENV PATH=${PATH}:/home/${USERNAME}/.local/bin:/home/${USERNAME}/go/bin \
     COLORTERM=truecolor \
     CLAUDE_CONFIG_DIR=/home/${USERNAME}/.claude \
-    DISABLE_UPDATES=1 \
     GH_NO_UPDATE_NOTIFIER=1
 
 # Build metadata for `welcome` and tooling: /etc/toolchain/release (version, revision, date,
@@ -276,5 +248,4 @@ RUN install -d -m 0755 /etc/toolchain \
   && echo "${PREVIOUS_TOOLS}" | tr ' ' '\n' | sed '/^$/d' >/etc/toolchain/previous
 
 LABEL org.opencontainers.image.title="toolchain-dev" \
-      org.opencontainers.image.description="Dev container image: toolchain-ci plus dev conveniences" \
-      toolchain.claude-code.version="${CLAUDE_CODE_VERSION}"
+      org.opencontainers.image.description="Dev container image: toolchain-ci plus dev conveniences"

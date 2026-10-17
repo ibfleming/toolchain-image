@@ -172,7 +172,7 @@ _welcome_main() {
     helm $'\U000F0833' $blue helm
     k9s $'' $cyan k9s
     cmake $'' $red CMake
-    claude $'' $orange claude-code
+    gh $'\uf09b' $fg cli
   )
   local cell row=
   local -i n=0

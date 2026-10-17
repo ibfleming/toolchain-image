@@ -54,8 +54,7 @@ The image sets a few environment variables to keep tool versions pinned to the i
 | `GOTOOLCHAIN`           | `local`                | Go must not download another toolchain because a `go.mod` asks for one |
 | `UV_PYTHON_DOWNLOADS`   | `never`                | uv uses the image's Python instead of downloading its own              |
 | `UV_PYTHON_PREFERENCE`  | `only-system`          | Same, for uv's interpreter discovery                                   |
-| `DISABLE_UPDATES`       | `1`                    | Claude Code changes version only with the image                        |
-| `CLAUDE_CONFIG_DIR`     | `/home/vscode/.claude` | Claude Code state lives in the per-project volume                      |
+| `CLAUDE_CONFIG_DIR`     | `/home/vscode/.claude` | Claude Code's sign-in and conversations live in the per-project volume |
 | `GH_NO_UPDATE_NOTIFIER` | `1`                    | The GitHub CLI changes version only with the image                     |
 
 Override any of them per repository:
@@ -182,12 +181,12 @@ The feature installs its own CLI in `/usr/bin`, but the image's pinned CLI comes
 
 ## Claude Code
 
-| Aspect            | Default                                                                                                                  | How to change it                                                                         |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
-| Version           | Pinned in the `Dockerfile` (`CLAUDE_CODE_VERSION`), verified by signature                                                | Build your own image with a different version                                            |
-| Policy            | `/etc/claude-code/managed-settings.json`: deny reading credential locations and `.env` files, no bypass-permissions mode | Replace it in a derived image (below). The policy outranks all user and project settings |
-| Everything else   | Claude Code defaults                                                                                                     | User settings (`~/.claude/settings.json`) and project settings (`.claude/settings.json`) |
-| Not wanted at all | Installed                                                                                                                | Remove the extension (`-anthropic.claude-code`) and ignore the CLI, or build without it  |
+| Aspect            | Default                                                                                                                  | How to change it                                                                                         |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| CLI               | Not installed: the VS Code extension (in the image's label) runs its own bundled CLI                                     | Install it in your container (`mise use -g` or Anthropic's installer) if you want `claude` in a terminal |
+| Policy            | `/etc/claude-code/managed-settings.json`: deny reading credential locations and `.env` files, no bypass-permissions mode | Replace it in a derived image (below). The policy outranks all user and project settings                 |
+| Everything else   | Claude Code defaults                                                                                                     | User settings (`~/.claude/settings.json`) and project settings (`.claude/settings.json`)                 |
+| Not wanted at all | The extension is installed                                                                                               | Remove it per repository (`-anthropic.claude-code`)                                                      |
 
 The managed policy is a **secure default**, not an enforcement boundary: `vscode` has passwordless
 sudo, so it can be changed inside a running container. Organizations that need a policy users
