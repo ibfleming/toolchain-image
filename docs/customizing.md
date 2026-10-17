@@ -146,10 +146,10 @@ file, so it shows the host look.
 `pull.rebase` and `fetch.prune`. Any value in your `~/.gitconfig` overrides them. VS Code copies
 your host `.gitconfig` into the container by default.
 
-The GitHub CLI (`gh`) ships signed out, and the image never contains a token. Sign in once per
-container with `gh auth login` (the token is stored in `~/.config/gh/`, inside the container), or
-set `GH_TOKEN` for the session. To keep the sign-in across rebuilds, mount a volume at
-`/home/vscode/.config/gh` in `devcontainer.json`.
+The GitHub CLI (`gh`) ships signed out, and the image never contains a token. Sign in with
+`gh auth login`; the template mounts the `toolchain-gh-config` volume at `~/.config/gh`, so that one
+sign-in is shared by your containers and kept across rebuilds. See
+[Authentication](auth.md#github-cli) for the alternatives.
 
 ## Docker
 

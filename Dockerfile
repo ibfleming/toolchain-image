@@ -230,8 +230,8 @@ RUN f=/usr/local/share/toolchain/starship/starship.toml \
 # ... and seeded, user-owned home files (.zshrc, .npmrc, ~/.config/k9s). Pre-creating the
 # XDG dirs makes named volumes mounted there inherit vscode ownership.
 # (install -d only chowns the dirs it is given, so parents are listed explicitly.)
-RUN for d in .config .cache .local .local/bin .local/share .local/share/mise .local/state \
-      .local/state/zsh; do \
+RUN for d in .config .config/gh .cache .local .local/bin .local/share .local/share/mise \
+      .local/state .local/state/zsh; do \
       install -d -o "${USERNAME}" -g "${USERNAME}" "/home/${USERNAME}/${d}" || exit 1; \
     done
 COPY --chown=${USERNAME}:${USERNAME} config/home/ /home/${USERNAME}/

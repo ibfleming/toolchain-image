@@ -12,6 +12,8 @@
   "mounts": [
     // Claude Code's sign-in and conversations, kept across rebuilds.
     "source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
+    // GitHub CLI sign-in (`gh auth login` once), shared by your containers and kept across rebuilds.
+    "source=toolchain-gh-config,target=/home/vscode/.config/gh,type=volume",
     // zsh history across rebuilds.
     "source=zsh-state-${devcontainerId},target=/home/vscode/.local/state/zsh,type=volume",
     // Your own extra mise tools, shared by your containers, so a rebuild doesn't download them again.
