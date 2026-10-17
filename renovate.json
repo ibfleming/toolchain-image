@@ -54,6 +54,12 @@
       "managerFilePatterns": ["/(^|/)config/zsh/plugins\\.txt$/"],
       "matchStrings": ["(?<name>\\S+) (?<depName>[\\w.-]+/[\\w.-]+) (?<currentValue>\\S+) (?<currentDigest>[0-9a-f]{40})"],
       "datasourceTemplate": "github-tags"
+    },
+    {
+      "customType": "regex",
+      "description": "npm CLIs the test scripts run with npx, annotated `# renovate: datasource=npm depName=<package>` above `readonly NAME=\"<package>@<version>\"`",
+      "managerFilePatterns": ["/(^|/)tests/[^/]+\\.sh$/"],
+      "matchStrings": ["# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\nreadonly \\w+=\"\\S+@(?<currentValue>[^\"@]+)\""]
     }
   ]
 }

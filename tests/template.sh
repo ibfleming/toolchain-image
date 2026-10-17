@@ -15,12 +15,14 @@ set -euo pipefail
 
 REPO_DIR="$(cd "${BASH_SOURCE[0]%/*}/.." && pwd)"
 readonly REPO_DIR
-readonly CLI="@devcontainers/cli@0.80.1"
+# 0.80.2 or newer: older versions wait forever for a container-start event
+# field that Docker 29 no longer sends (devcontainers/cli#1103).
+# renovate: datasource=npm depName=@devcontainers/cli
+readonly CLI="@devcontainers/cli@0.89.0"
 readonly WORK="${REPO_DIR}/.tmp/template-test"
 readonly PROJECT="${WORK}/my-project"
-# Seconds for each `up` attempt: the image is local, so a healthy one takes
-# seconds; the retry gets longer.
-readonly -a UP_TIMEOUTS=(120 300)
+# The image is local, so a healthy `up` takes seconds.
+readonly UP_TIMEOUT=300
 FAILED=0
 
 # shellcheck source=scripts/lib/log.sh
@@ -81,26 +83,16 @@ cleanup() {
 }
 
 #######################################
-# Bring the project up with the Dev Containers CLI. Tries twice: in some
-# environments (seen on WSL) the CLI stalls right after creating the
-# container, and a second `up` carries on from the existing container.
+# Bring the project up with the Dev Containers CLI.
 # Globals:
-#   CLI, PROJECT, UP_TIMEOUTS, WORK
+#   CLI, PROJECT, UP_TIMEOUT, WORK
 # Returns:
 #   0 when the CLI reports success.
 #######################################
 devcontainer_up() {
-  local -i attempt
-  for attempt in 1 2; do
-    if timeout "${UP_TIMEOUTS[attempt - 1]}" npx --yes "${CLI}" up \
-      --workspace-folder "${PROJECT}" >"${WORK}/up-${attempt}.log" 2>&1 \
-      && grep -q '"outcome":"success"' "${WORK}/up-${attempt}.log"; then
-      return 0
-    fi
-    log::warn "devcontainer up attempt ${attempt} did not finish" \
-      "(log: ${WORK}/up-${attempt}.log)"
-  done
-  return 1
+  timeout "${UP_TIMEOUT}" npx --yes "${CLI}" up \
+    --workspace-folder "${PROJECT}" >"${WORK}/up.log" 2>&1 \
+    && grep -q '"outcome":"success"' "${WORK}/up.log"
 }
 
 main() {
@@ -117,7 +109,10 @@ main() {
   "${REPO_DIR}/scripts/render_template.sh" "${image}" "${PROJECT}"
   git -C "${PROJECT}" init -q -b main
 
-  devcontainer_up || log::fatal "the template's container didn't come up"
+  if ! devcontainer_up; then
+    tail -n 40 "${WORK}/up.log" >&2
+    log::fatal "the template's container didn't come up (CLI log above)"
+  fi
   id="$(container_id)"
 
   out="$(docker exec -u vscode "${id}" dev-status)" || true
