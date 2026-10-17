@@ -89,7 +89,8 @@ podTemplate(containers: [
 Copy [`devcontainer/devcontainer.json`](devcontainer/devcontainer.json) to `.devcontainer/` in
 your repository and fill in the image reference. Editor extensions, settings, the `vscode` user
 and the shell all come from the image, so the file stays short. Anything you set there overrides
-the image.
+the image. [Architecture](docs/architecture.md) sets out what goes in that file, what goes in
+`.vscode/`, and what stays personal.
 
 The first terminal in a new container shows a short greeting:
 
@@ -215,6 +216,8 @@ the k9s skin, also Apache-2.0).
 
 ## Documentation
 
+- [Architecture](docs/architecture.md): what belongs in the image, `.devcontainer/`, `.vscode/` and
+  personal settings, and what a consumer repository owns
 - [Customizing](docs/customizing.md): every layer you can override
 - [Design records](docs/design/README.md): the research behind the project, and where the
   implementation differs from it

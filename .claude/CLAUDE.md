@@ -7,7 +7,7 @@ One Dockerfile builds two images from one pinned tool manifest:
 
 Both are built by one `docker buildx bake` run, released to `ghcr.io/<owner>/toolchain/{ci,dev}`, and consumed by digest.
 
-Read first: [README.md](../README.md) (usage, development, releases), [docs/customizing.md](../docs/customizing.md) (override layers), [docs/design/](../docs/design/README.md) (research records and the decisions that differ from them).
+Read first: [README.md](../README.md) (usage, development, releases), [docs/architecture.md](../docs/architecture.md) (ownership layers, consumer contract), [docs/customizing.md](../docs/customizing.md) (override layers), [docs/design/](../docs/design/README.md) (research records and the decisions that differ from them).
 
 ## Invariants (don't break without the maintainer's agreement)
 

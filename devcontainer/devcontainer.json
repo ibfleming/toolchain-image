@@ -15,17 +15,12 @@
     // zsh history across rebuilds.
     "source=zsh-state-${devcontainerId},target=/home/vscode/.local/state/zsh,type=volume",
     // Your own extra mise tools (`mise use -g ...`), shared by all your containers, so a rebuild
-    // doesn't download them again. The list of them is ~/.config/mise/config.toml: keep it in
-    // your dotfiles to have it back after a rebuild.
+    // doesn't download them again.
     "source=toolchain-mise-data,target=/home/vscode/.local/share/mise,type=volume",
     // Docker: use the host's engine. The image serves this socket to vscode as
     // /var/run/docker.sock. Remove it for no Docker, or see docs/customizing.md for
     // Docker-in-Docker. Rootless Docker: source=${localEnv:XDG_RUNTIME_DIR}/docker.sock
     "source=/var/run/docker.sock,target=/var/run/docker-host.sock,type=bind"
-
-    // Optional: personal dotfiles from a local clone, mounted READ-ONLY so the container can't
-    // modify them and needs no Git credentials (pair with the postStartCommand below).
-    // "source=${localEnv:HOME}/dotfiles,target=/home/vscode/.dotfiles,type=bind,readonly"
   ],
 
   "remoteEnv": {
@@ -36,9 +31,6 @@
     // mise.toml too (only this folder; anything else still asks for `mise trust`).
     "MISE_TRUSTED_CONFIG_PATHS": "${containerWorkspaceFolder}"
   }
-
-  // Optional: apply those dotfiles on every start (idempotent; edits apply without a rebuild).
-  // "postStartCommand": "/home/vscode/.dotfiles/install.sh",
 
   // Optional: Claude Code auth without an interactive /login. Store `claude setup-token` output as
   // CLAUDE_CODE_OAUTH_TOKEN=<token> in a 0600 file outside any repository. Container creation
