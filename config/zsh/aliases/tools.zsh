@@ -6,4 +6,5 @@ if (($+commands[tofu])); then
 fi
 (($+commands[uv])) && alias uvr='uv run' uvs='uv sync'
 (($+commands[cmake])) && alias cmb='cmake -S . -B build -G Ninja && cmake --build build'
+(($+commands[lazydocker])) && alias lzd='lazydocker'
 alias versions='print-versions'
