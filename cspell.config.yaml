@@ -68,6 +68,7 @@ words:
   - kubectx
   - kubens
   - kustomizations
+  - lazydocker
   - LESSHISTFILE
   - libc
   - limitranges

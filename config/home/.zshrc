@@ -1,4 +1,4 @@
-# ~/.zshrc: seeded by the toolchain dev image. Safe to replace (e.g. from dotfiles);
+# ~/.zshrc: seeded by the toolchain dev image. Safe to replace;
 # keep the `source` line to stay on the shared config.
 #
 # Skip shared modules (path under /usr/local/share/toolchain/zsh, without .zsh):

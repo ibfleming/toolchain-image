@@ -19,8 +19,8 @@ a requirement**. This page lists every layer you can override, from lightest tou
 | Everything                                  | Fork the repository and build your own family        |
 
 Changes made only inside a running container (outside the mounted volumes) disappear on rebuild.
-To make them stick, put them in a dotfiles repo (see [Personal config](#personal-config-that-follows-you)),
-in your repo's `devcontainer.json`, or in a derived image.
+To make them stick, put them in your repo's `devcontainer.json` or in a derived image. Where each
+kind of setting belongs is in [Architecture](architecture.md).
 
 ## Editor: `devcontainer.json`
 
@@ -202,8 +202,8 @@ COPY managed-settings.json /etc/claude-code/managed-settings.json
 - **Your own extra tools (mise):** in the dev container's shell, `mise use -g <tool>` installs a
   tool for you, and a project's own `mise.toml` installs its tools. Both go into a personal mise
   layer in your home directory, kept apart from the image's:
-  - **Config:** `~/.config/mise/config.toml` for your tools (keep it in your dotfiles so it follows
-    you; mise trusts it as global config), and the project's `mise.toml`. The template trusts the
+  - **Config:** `~/.config/mise/config.toml` for your tools (mise trusts it as global config), and
+    the project's `mise.toml`. The template trusts the
     opened workspace folder (`MISE_TRUSTED_CONFIG_PATHS`), so a project's `mise.toml` with `[env]`
     or hooks works without `mise trust`; any other folder still asks.
   - **Tools:** `~/.local/share/mise`, a volume in the template shared by your containers, so a
@@ -233,13 +233,11 @@ COPY managed-settings.json /etc/claude-code/managed-settings.json
 The image's tools live in a root-owned mise data directory and are linked into `/usr/local/bin`,
 so they are on `PATH` in every process, not only in interactive shells.
 
-## Personal config that follows you
+## Personal settings
 
-Personal settings, such as your global Claude Code instructions and permission rules, belong in a
-dotfiles repository rather than in the image or in each project. The template supports mounting a
-local dotfiles clone **read-only** and running its installer on every container start, so it needs
-no Git credentials inside the container. See the commented blocks in
-[`devcontainer/devcontainer.json`](../devcontainer/devcontainer.json).
+Themes, fonts, keybindings and other personal preferences are yours, not the platform's: keep them
+in your VS Code user settings (Settings Sync carries them into every container) and outside the
+repository. See [Architecture](architecture.md#what-belongs-where).
 
 ## Your own image family
 
