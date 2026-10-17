@@ -218,6 +218,15 @@ RUN gen-zsh-completions
 COPY config/zsh/ /usr/local/share/toolchain/zsh/
 COPY config/starship/ /usr/local/share/toolchain/starship/
 COPY config/git/gitconfig /etc/gitconfig
+# The image's prompt marks a container shell: the Docker-blue palette, and the Docker whale
+# (U+F308) instead of the Debian logo. Hosts that install the shell keep the repo's file as is.
+# Fails the build if either line is not found.
+RUN f=/usr/local/share/toolchain/starship/starship.toml \
+  && whale="$(printf '\357\214\210')" \
+  && sed -i -e "s/^palette = 'one_dark'$/palette = 'one_dark_container'/" \
+      -e "s/^Debian = .*/Debian = \"${whale}\"/" "${f}" \
+  && grep -qx "palette = 'one_dark_container'" "${f}" \
+  && grep -qx "Debian = \"${whale}\"" "${f}"
 # ... and seeded, user-owned home files (.zshrc, .npmrc, ~/.config/k9s). Pre-creating the
 # XDG dirs makes named volumes mounted there inherit vscode ownership.
 # (install -d only chowns the dirs it is given, so parents are listed explicitly.)

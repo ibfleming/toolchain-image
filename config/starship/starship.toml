@@ -7,10 +7,10 @@
 "$schema" = 'https://starship.rs/config-schema.json'
 
 format = """
-[](color_orange)\
+[](color_user)\
 $os\
 $username\
-[](bg:color_yellow fg:color_orange)\
+[](bg:color_yellow fg:color_user)\
 $directory\
 [](fg:color_yellow bg:color_aqua)\
 $git_branch\
@@ -53,10 +53,29 @@ color_orange = '#d19a66'
 color_purple = '#c678dd'
 color_red = '#e06c75'
 color_yellow = '#e5c07b'
+color_user = '#d19a66'   # the first segment (OS + user); orange, like the preset
+
+# The dev image's prompt (selected at build time; see the Dockerfile): the first segment turns
+# Docker blue and shows the whale instead of the OS logo, so a shell in a container is easy to
+# tell from one on the host. Same colors otherwise.
+[palettes.one_dark_container]
+color_fg0 = '#abb2bf'    # light text, used on the grey segments
+color_bg0 = '#282c34'    # dark text, used on the bright segments (pastels need dark text)
+color_bg1 = '#3e4452'
+color_bg3 = '#4b5263'
+color_blue = '#61afef'
+color_aqua = '#56b6c2'   # one-dark cyan; key name kept from the preset
+color_cyan = '#56b6c2'
+color_green = '#98c379'
+color_orange = '#d19a66'
+color_purple = '#c678dd'
+color_red = '#e06c75'
+color_yellow = '#e5c07b'
+color_user = '#2496ed'   # Docker blue: this shell is in a container
 
 [os]
 disabled = false
-style = "bg:color_orange fg:color_bg0"
+style = "bg:color_user fg:color_bg0"
 
 [os.symbols]
 Windows = "󰍲"
@@ -84,8 +103,8 @@ Pop = ""
 
 [username]
 show_always = true
-style_user = "bg:color_orange fg:color_bg0"
-style_root = "bg:color_orange fg:color_bg0"
+style_user = "bg:color_user fg:color_bg0"
+style_root = "bg:color_user fg:color_bg0"
 format = '[ $user ]($style)'
 
 [directory]

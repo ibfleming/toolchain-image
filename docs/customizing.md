@@ -129,6 +129,12 @@ The shared prompt is `/usr/local/share/toolchain/starship/starship.toml`. A pers
 `~/.config/starship.toml` takes precedence automatically, and so does an explicit
 `STARSHIP_CONFIG`. To turn the prompt off, skip `post.d/10-prompt`.
 
+In the dev image, the prompt's first segment is **Docker blue with the Docker whale** instead of
+orange with the OS logo, so a shell in a container can't be mistaken for one on the host. The repo
+holds one file: the image's copy selects its `one_dark_container` palette and the whale at build
+time, and hosts that install the shell use the file as it is. `make shell-live` mounts the repo's
+file, so it shows the host look.
+
 ## k9s
 
 `~/.config/k9s/` is seeded with a config, aliases, hotkeys and a one-dark skin. It's owned by
