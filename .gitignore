@@ -15,3 +15,6 @@ bake-meta.json
 
 # Test and script work folders (in the repository so a dev container can bind-mount them).
 .tmp/
+
+# Code workspace files
+*.code-workspace
