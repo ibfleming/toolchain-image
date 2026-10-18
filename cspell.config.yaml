@@ -75,8 +75,10 @@ words:
   - lldb
   - logoless
   - mkcd
+  - nolisten
   - noninteractive
   - NOPASSWD
+  - noutf
   - opencontainers
   - passwordless
   - pids
@@ -106,6 +108,7 @@ words:
   - USERPROFILE
   - vimcmd
   - WORDCHARS
+  - xclip
   - zcompcache
   - zcompdump
   - zdiff

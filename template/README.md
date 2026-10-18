@@ -53,11 +53,12 @@ Commit one only if the repository deliberately defines a multi-root workspace.
 
 ## Troubleshooting
 
-| Symptom                                           | Fix                                                                                                  |
-| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `dev.sh: Docker is installed but not reachable`   | Start Docker Desktop, or `sudo systemctl start docker`; `docker info` must work without sudo         |
-| `dev.sh: VS Code's 'code' command is not on PATH` | Install VS Code; on macOS, run "Shell Command: Install 'code' command in PATH"                       |
-| VS Code opens, but not in the container           | Install the Dev Containers extension, then run `./dev.sh` again                                      |
-| `the container is not ready`                      | `./dev.sh --status` shows which step failed and where its log is; fix it, then reopen or `--rebuild` |
-| Very slow on Windows                              | The repository is under `/mnt/c`: clone it inside WSL instead                                        |
-| `git push` asks for credentials                   | Start an SSH agent on the host and add your key; VS Code forwards it into the container              |
+| Symptom                                            | Fix                                                                                                            |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `dev.sh: Docker is installed but not reachable`    | Start Docker Desktop, or `sudo systemctl start docker`; `docker info` must work without sudo                   |
+| `dev.sh: VS Code's 'code' command is not on PATH`  | Install VS Code; on macOS, run "Shell Command: Install 'code' command in PATH"                                 |
+| VS Code opens, but not in the container            | Install the Dev Containers extension, then run `./dev.sh` again                                                |
+| `the container is not ready`                       | `./dev.sh --status` shows which step failed and where its log is; fix it, then reopen or `--rebuild`           |
+| Very slow on Windows                               | The repository is under `/mnt/c`: clone it inside WSL instead                                                  |
+| `gh` or another tool can't copy, or open a browser | Use a VS Code terminal, or a terminal with OSC 52 clipboard support (Windows Terminal, iTerm2, kitty, WezTerm) |
+| `git push` asks for credentials                    | Start an SSH agent on the host and add your key; VS Code forwards it into the container                        |
