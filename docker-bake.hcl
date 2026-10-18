@@ -1,38 +1,66 @@
-// One bake run builds both published targets from the same commit and base digest.
-//   docker buildx bake            -> ci + dev (default group)
-//   docker buildx bake local      -> both, loaded into the local (containerd) image store
+// Build definitions for the two published images (what each contains is in the Dockerfile).
+//
+//   docker buildx bake          ci + dev (the default group): attested, tagged for staging
+//   docker buildx bake local    ci + dev loaded into the local image store as toolchain/*:local
+//
+// One run builds both images from the same commit and base digest. Every variable below can be set
+// from the environment, which is how CI and the release workflow configure a build.
 
-// Where `ci`/`dev` are pushed (staging/<target>:<VERSION>). CI sets ghcr.io/<owner>/toolchain;
-// the default suits a local registry (`docker run -d -p 5000:5000 registry:2`).
+
+// =================================================================================================
+// Variables
+// =================================================================================================
+
+// --- Where images go -----------------------------------------------------------------------------
+// Pushed as REGISTRY/staging/<target>:VERSION. CI sets ghcr.io/<owner>/toolchain; the default suits
+// a local registry (`docker run -d -p 5000:5000 registry:2`).
 variable "REGISTRY" { default = "localhost:5000/toolchain" }
 variable "VERSION" { default = "0.0.0-dev" }
-variable "SOURCE_DATE_EPOCH" { default = "0" }
-variable "PLATFORMS" { default = "linux/amd64" }
-// Registry cache ref prefix, e.g. "${REGISTRY}/buildcache". Empty = no registry cache (local builds).
+
+// --- Build cache ---------------------------------------------------------------------------------
+// Registry cache ref prefix, e.g. "${REGISTRY}/buildcache". Empty = no registry cache (local
+// builds).
 variable "CACHE_REF" { default = "" }
 // "1" = also write the registry cache (release pipeline only; CI and laptops only read it).
 variable "CACHE_TO" { default = "" }
+
+// --- Image metadata ------------------------------------------------------------------------------
 // Git commit the image is built from (org.opencontainers.image.revision).
 variable "REVISION" { default = "" }
 // Repository URL (org.opencontainers.image.source); GHCR uses it to link packages to the repo.
 variable "SOURCE_URL" { default = "" }
+// Build date for reproducible builds (the commit's time in releases; 0 locally).
+variable "SOURCE_DATE_EPOCH" { default = "0" }
 // The previous release and its tools (`tool=version ...`), from scripts/previous_tools.sh. The dev
 // image's `welcome` marks what changed since then; empty = no marks (local builds).
 variable "PREVIOUS_VERSION" { default = "" }
 variable "PREVIOUS_TOOLS" { default = "" }
+
+// --- Build behaviour -----------------------------------------------------------------------------
+variable "PLATFORMS" { default = "linux/amd64" }
 // A new value per release run (the release workflow passes its run ID): rebuilds the apt layers,
 // so each release ships Debian's current security fixes instead of cached packages. Empty = cache.
 variable "APT_REFRESH" { default = "" }
 
+// --- Cache helpers -------------------------------------------------------------------------------
+// Read the registry cache of the given targets; nothing without CACHE_REF.
 function "cache_from" {
   params = [names]
   result = CACHE_REF == "" ? [] : [for n in names : "type=registry,ref=${CACHE_REF}:${n}"]
 }
+// Write the target's registry cache (every layer, mode=max); only with CACHE_REF and CACHE_TO=1.
 function "cache_to" {
   params = [name]
   result = CACHE_REF == "" || CACHE_TO != "1" ? [] : ["type=registry,ref=${CACHE_REF}:${name},mode=max"]
 }
 
+
+// =================================================================================================
+// Published targets: ci and dev
+// =================================================================================================
+
+// Shared by both: build args, SBOM and provenance attestations, the BuildKit secret for mise's
+// GitHub downloads (never a build arg: mode=max provenance publishes build args), OCI labels.
 target "_common" {
   context   = "."
   platforms = split(",", PLATFORMS)
@@ -62,6 +90,7 @@ target "ci" {
   cache-to   = cache_to("ci")
 }
 
+// dev also reads ci's cache: it's built FROM ci, so those layers are shared.
 target "dev" {
   inherits   = ["_common"]
   target     = "dev"
@@ -69,7 +98,8 @@ target "dev" {
   cache-from = cache_from(["ci", "dev"])
   cache-to   = cache_to("dev")
   labels = {
-    // Merged with the consuming repo's devcontainer.json at create time (repo file wins).
+    // The dev container setup that ships with the image. Merged with the consuming repo's
+    // devcontainer.json when the container is created (the repo's file wins on conflicts).
     // Never put secrets here: anyone who can pull the image can read this label.
     "devcontainer.metadata" = jsonencode([{
       remoteUser = "vscode"
@@ -90,6 +120,7 @@ target "dev" {
             "tamasfe.even-better-toml",
           ]
           settings = {
+            // Python: the image's interpreter; Ruff formats, fixes and sorts imports on save.
             "python.defaultInterpreterPath" = "/usr/local/bin/python3"
             "[python]" = {
               "editor.defaultFormatter" = "charliermarsh.ruff"
@@ -99,23 +130,27 @@ target "dev" {
                 "source.organizeImports" = "explicit"
               }
             }
+            // Go: format on save; the image provides the Go tools, so the extension leaves them.
             "[go]" = {
               "editor.defaultFormatter" = "golang.go"
               "editor.formatOnSave"     = true
             }
             "go.toolsManagement.autoUpdate" = false
-            "clangd.path"                   = "/usr/bin/clangd"
-            "cmake.generator"               = "Ninja"
+            // C and C++: the image's clangd; CMake builds with Ninja.
+            "clangd.path"     = "/usr/bin/clangd"
+            "cmake.generator" = "Ninja"
             "[cpp]" = {
               "editor.defaultFormatter" = "llvm-vs-code-extensions.vscode-clangd"
             }
             "[c]" = {
               "editor.defaultFormatter" = "llvm-vs-code-extensions.vscode-clangd"
             }
+            // OpenTofu: format on save.
             "[opentofu]" = {
               "editor.defaultFormatter" = "opentofu.vscode-opentofu"
               "editor.formatOnSave"     = true
             }
+            // Terminals open the image's zsh.
             "terminal.integrated.defaultProfile.linux" = "zsh"
           }
         }
@@ -126,21 +161,29 @@ target "dev" {
 
 group "default" { targets = ["ci", "dev"] }
 
-// Local iteration: load into the image store under stable local tags. Attestations are
-// disabled explicitly: the classic Docker image store (e.g. GitHub runners) cannot load the
-// manifest list they create. Release builds (`ci`, `dev` targets) keep SBOM + provenance.
+
+// =================================================================================================
+// Local builds: toolchain/ci:local and toolchain/dev:local
+// =================================================================================================
+
+// Loaded into the local image store under stable tags. Attestations are disabled explicitly: the
+// classic Docker image store (e.g. GitHub runners) can't load the manifest list they create.
+// Release builds (the ci and dev targets) keep SBOM and provenance.
 target "_local" {
   // Uncompressed: these images only go into the local image store, so compressing their layers
   // (about 2 GB each, gzip on one core) only to unpack them again is wasted time.
   output = ["type=docker,compression=uncompressed"]
   attest = ["type=provenance,disabled=true", "type=sbom,disabled=true"]
 }
+
 target "ci-local" {
   inherits = ["ci", "_local"]
   tags     = ["toolchain/ci:local"]
 }
+
 target "dev-local" {
   inherits = ["dev", "_local"]
   tags     = ["toolchain/dev:local"]
 }
+
 group "local" { targets = ["ci-local", "dev-local"] }
