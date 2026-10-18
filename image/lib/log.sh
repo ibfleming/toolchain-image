@@ -18,6 +18,12 @@
 #   TOOLCHAIN_LOG_TAG    the name in each line (default: the script's name)
 #   GITHUB_ACTIONS       when "true": colors on, and warnings and errors
 #                        also become annotations on the workflow run
+#
+# Log text can't run CI commands, in any environment (CI output also comes
+# from scripts in containers, which don't see GITHUB_ACTIONS): a message's
+# line breaks indent its continuation lines, so no line starts with "::"
+# (GitHub Actions), and "##vso[" (Azure DevOps) and "##[" are broken up
+# ("# #vso[") wherever they appear.
 
 [[ -n "${_TOOLCHAIN_LOG_LOADED:-}" ]] && return 0
 
@@ -130,17 +136,43 @@ log::_threshold() {
 }
 
 #######################################
-# Escape a GitHub Actions workflow-command value.
+# Escape a GitHub Actions workflow-command value: a message, or with
+# "property", a property value such as an annotation title (which also
+# escapes ":" and ",").
 # Globals:
 #   REPLY (set)
 # Arguments:
-#   The value.
+#   The value, then optionally "property".
 #######################################
 log::_gha_escape() {
   local value="$1"
   value="${value//'%'/%25}"
   value="${value//$'\r'/%0D}"
-  REPLY="${value//$'\n'/%0A}"
+  value="${value//$'\n'/%0A}"
+  if [[ "${2:-}" == "property" ]]; then
+    value="${value//:/%3A}"
+    value="${value//,/%2C}"
+  fi
+  REPLY="${value}"
+}
+
+#######################################
+# Set REPLY to text that can't run a CI command when printed: CR LF and lone
+# CRs become line breaks, every continuation line is indented by two spaces
+# (so none starts with "::"), and the "##vso[" and "##[" prefixes are broken
+# up wherever they appear.
+# Globals:
+#   REPLY (set)
+# Arguments:
+#   The text.
+#######################################
+log::_safe_text() {
+  local text="$1"
+  text="${text//$'\r\n'/$'\n'}"
+  text="${text//$'\r'/$'\n'}"
+  text="${text//$'\n'/$'\n'  }"
+  text="${text//'##vso['/'# #vso['}"
+  REPLY="${text//'##['/'# #['}"
 }
 
 #######################################
@@ -153,8 +185,8 @@ log::_gha_escape() {
 #   Level: DEBUG, INFO, OK, WARN, ERROR or FATAL.
 #   Message words (joined with spaces).
 # Outputs:
-#   The line to STDERR; for WARN and above in GitHub Actions, also an
-#   annotation command.
+#   The line to STDERR (made safe by log::_safe_text); for WARN and above in
+#   GitHub Actions, also an annotation command.
 #######################################
 log::_emit() {
   local level="$1"
@@ -168,16 +200,23 @@ log::_emit() {
   printf -v ts '%(%Y-%m-%dT%H:%M:%S%z)T' -1
   tag="${TOOLCHAIN_LOG_TAG:-${0##*/}}"
   tag="${tag%.sh}"
+  local safe_tag safe_message
+  log::_safe_text "${tag}"
+  safe_tag="${REPLY}"
+  log::_safe_text "${message}"
+  safe_message="${REPLY}"
   printf '%s%s%s %s%-5s%s %s%s:%s %s\n' \
     "${_LOG_DIM}" "${ts}" "${_LOG_RESET}" \
     "${_LOG_COLOR[${level}]:-}" "${level}" "${_LOG_RESET}" \
-    "${_LOG_TAG}" "${tag}" "${_LOG_RESET}" "${message}" >&2
+    "${_LOG_TAG}" "${safe_tag}" "${_LOG_RESET}" "${safe_message}" >&2
   if [[ "${GITHUB_ACTIONS:-}" == "true" ]] \
     && ((_LOG_SEVERITY[${level}] >= 30)); then
-    local kind="error"
+    local kind="error" title
     [[ "${level}" == "WARN" ]] && kind="warning"
+    log::_gha_escape "${tag}" property
+    title="${REPLY}"
     log::_gha_escape "${message}"
-    printf '::%s title=%s::%s\n' "${kind}" "${tag//[,:]/_}" "${REPLY}" >&2
+    printf '::%s title=%s::%s\n' "${kind}" "${title}" "${REPLY}" >&2
   fi
 }
 

@@ -43,6 +43,7 @@ words:
   - dandavison
   - dups
   - esac
+  - extraheader
   - fkill
   - fpath
   - gclean
@@ -96,6 +97,7 @@ words:
   - SAVEHIST
   - schemafile
   - serviceaccounts
+  - setvariable
   - sharkdp
   - splashless
   - subshell

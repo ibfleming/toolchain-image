@@ -147,9 +147,10 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN,required=false \
 
 # Docker client. The engine is the host's (its socket mounted at /var/run/docker-host.sock, see
 # docker-socket-init) or, opt-in, Docker-in-Docker. The CLI comes from Docker's apt repository,
-# verified by its signing key (vendored, fingerprint pinned): Docker publishes no checksums for its
-# static binaries. buildx and compose are checksum-pinned in the dev mise manifest and linked into
-# the system plugin directory here. Renovate bumps the CLI (deb datasource).
+# verified by its signing key (vendored; the file must hold exactly one primary key, with the pinned
+# fingerprint): Docker publishes no checksums for its static binaries. buildx and compose are
+# checksum-pinned in the dev mise manifest and linked into the system plugin directory here.
+# Renovate bumps the CLI (deb datasource).
 ARG TARGETARCH
 ARG DOCKER_GPG_FPR=9DC858229FC7DD38854AE2D88D81803C0EBFCD88
 # editorconfig-checker-disable-next-line
@@ -160,8 +161,11 @@ COPY --chmod=0755 image/docker_socket_init.sh /usr/local/sbin/docker-socket-init
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     GNUPGHOME="$(mktemp -d)" && export GNUPGHOME \
-  && gpg --batch --quiet --import /tmp/docker-release.asc \
-  && gpg --batch --with-colons --fingerprint | grep -q "^fpr:::::::::${DOCKER_GPG_FPR}:" \
+  && gpg --batch --with-colons --import-options show-only --import /tmp/docker-release.asc \
+      >/tmp/docker-key.txt \
+  && test "$(grep -c '^pub:' /tmp/docker-key.txt)" -eq 1 \
+  && awk -F: '/^pub:/ { p = 1; next } p && /^fpr:/ { print $10; exit }' /tmp/docker-key.txt \
+      | grep -qx "${DOCKER_GPG_FPR}" \
   && install -D -m 0644 /tmp/docker-release.asc /etc/apt/keyrings/docker.asc \
   && echo "deb [arch=${TARGETARCH} signed-by=/etc/apt/keyrings/docker.asc]" \
       "https://download.docker.com/linux/debian trixie stable" >/etc/apt/sources.list.d/docker.list \
@@ -174,7 +178,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     done \
   && groupadd --system docker \
   && usermod -aG docker "${USERNAME}" \
-  && rm -rf "${GNUPGHOME}" /tmp/docker-release.asc \
+  && rm -rf "${GNUPGHOME}" /tmp/docker-release.asc /tmp/docker-key.txt \
   && docker --version && docker buildx version && docker compose version
 
 # zsh plugins, at the git commits pinned in config/zsh/plugins.txt (git verifies a commit by its

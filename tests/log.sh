@@ -139,6 +139,39 @@ main() {
     matches "${result}" "::error title=bash::e"
   check "Actions: info is not annotated" lacks "${result}" "::notice"
 
+  # Log text can't run CI commands, with or without GITHUB_ACTIONS.
+  local env
+  for env in GITHUB_ACTIONS=true NOT_IN_ACTIONS=1; do
+    result="$(run_log "${env}" NO_COLOR=1 -- \
+      $'log::info "a\n::error::injected"; log::warn "b\r\n::add-mask::x"')"
+    check "${env}: a message's line can't start a workflow command" \
+      lacks "${result}" $'\n::error::injected'
+    check "${env}: nor after a CR LF" lacks "${result}" $'\n::add-mask::x'
+    check "${env}: continuation lines are indented" \
+      matches "${result}" $'INFO  bash: a\n  ::error::injected'
+    result="$(run_log "${env}" NO_COLOR=1 -- \
+      'log::info "x ##vso[task.setvariable variable=PATH]/evil ##[group]g"')"
+    check "${env}: Azure DevOps ##vso[ is broken up" \
+      lacks "${result}" '##vso['
+    check "${env}: and so is ##[" lacks "${result}" '##['
+    check "${env}: the text stays readable" matches "${result}" \
+      '# #vso\[task.setvariable variable=PATH\]/evil # #\[group\]g'
+  done
+
+  result="$(run_log TOOLCHAIN_LOG_COLOR=never -- $'log::info "50%\r60%"')"
+  check "a lone CR becomes a line break, not run-together text" \
+    matches "${result}" $'50%\n  60%'
+  result="$(run_log TOOLCHAIN_LOG_COLOR=never -- $'log::info "one\ntwo"')"
+  check "multi-line messages stay readable" matches "${result}" $'one\n  two'
+  result="$(run_log GITHUB_ACTIONS=true NO_COLOR=1 \
+    'TOOLCHAIN_LOG_TAG=a:b,c%d' -- 'log::warn w')"
+  check "Actions: the annotation title gets property escaping" \
+    matches "${result}" "::warning title=a%3Ab%2Cc%25d::w"
+  result="$(run_log GITHUB_ACTIONS=true NO_COLOR=1 \
+    $'TOOLCHAIN_LOG_TAG=x\n::add-mask::s' -- 'log::info hi')"
+  check "the tag can't start a workflow command either" \
+    lacks "${result}" $'\n::add-mask::s'
+
   result="$(run_log TOOLCHAIN_LOG_COLOR=never -- \
     '(log::fatal bye) || echo "rc=$?"')"
   check "log::fatal logs FATAL and exits 1" \
