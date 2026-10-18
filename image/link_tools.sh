@@ -79,10 +79,13 @@ link_dir() {
 }
 
 main() {
-  local dir
+  local dir paths
+  # Captured first: a failure inside the process substitution of a loop
+  # would go unnoticed and link nothing.
+  paths="$(cd / && mise bin-paths)" || log::fatal "mise bin-paths failed"
   while IFS= read -r dir; do
     link_dir "${dir}" || exit 1
-  done < <(cd / && mise bin-paths)
+  done <<<"${paths}"
   log::info "linked ${LINKED} new executables into ${DEST_DIR}" \
     "(${#OWNER[@]} seen)"
 }
