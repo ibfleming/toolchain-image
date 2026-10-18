@@ -23,7 +23,7 @@ readonly BREAKING_FOOTER_RE='^BREAKING[ -]CHANGE:'
 readonly FEAT_TITLE_RE='^feat(\([^)]*\))?:'
 
 # shellcheck source=image/lib/log.sh
-source "${BASH_SOURCE[0]%/*}/lib/log.sh"
+source "${BASH_SOURCE[0]%/*}/../image/lib/log.sh"
 
 #######################################
 # Print the highest vX.Y.Z tag, or nothing.

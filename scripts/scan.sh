@@ -42,7 +42,7 @@ readonly JQ_TABLE='
       | join("\n") end'
 
 # shellcheck source=image/lib/log.sh
-source "${BASH_SOURCE[0]%/*}/lib/log.sh"
+source "${BASH_SOURCE[0]%/*}/../image/lib/log.sh"
 
 #######################################
 # Print the Markdown report for one image.

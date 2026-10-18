@@ -22,7 +22,7 @@ readonly SEMVER_RE='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
 readonly TOOL_ROW_SED='s/^\| `([^`]+)` \| ([^ |]+) \|.*/\1=\2/'
 
 # shellcheck source=image/lib/log.sh
-source "${BASH_SOURCE[0]%/*}/lib/log.sh"
+source "${BASH_SOURCE[0]%/*}/../image/lib/log.sh"
 
 #######################################
 # Print the newest vX.Y.Z tag below a version, or the newest tag at all.
