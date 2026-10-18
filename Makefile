@@ -20,7 +20,7 @@ MISE_IMG := toolchain/mise:local
 .PHONY: help builder lint fmt spell lock scan check-commits check-pr-title screenshots changelog
 .PHONY: build bake-print shell shell-live shell-kube-demo
 .PHONY: test test-structure test-smoke test-parity test-k9s test-starship test-docker clean
-.PHONY: test-log test-welcome test-mise test-lifecycle test-template
+.PHONY: test-log test-welcome test-mise test-lifecycle test-template test-clipboard
 
 help: ## List targets
   @grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -127,7 +127,7 @@ shell-kube-demo: ## shell-live with a fake multi-context kubeconfig (no cluster 
     bash -c 'cp /fixtures/kubeconfig.yaml /tmp/kubeconfig-demo && exec zsh -l'
 
 TESTS := test-structure test-smoke test-parity test-k9s test-starship test-docker test-log test-welcome
-TESTS += test-lifecycle test-template
+TESTS += test-lifecycle test-template test-clipboard
 TESTS += test-mise
 test: $(TESTS) ## Run all image tests
 
@@ -160,6 +160,9 @@ test-lifecycle: ## Lifecycle state, validation checks and dev-status/dev-wait/de
 
 test-template: ## The consumer template end to end: devcontainer up, lifecycle ready, dev.sh (host; Node.js)
   tests/template.sh $(DEV_IMG)
+
+test-clipboard: ## Clipboard and browser bridges: OSC 52, the real xclip on a display (network), xdg-open
+  docker run --rm -u vscode -v "$(HOST_CURDIR)/tests/clipboard.sh:/t.sh:ro" $(DEV_IMG) bash /t.sh
 
 test-log: ## The logging library as installed in the image (levels, colors, annotations)
   docker run --rm -v "$(HOST_CURDIR)/tests/log.sh:/t.sh:ro" $(CI_IMG) bash /t.sh /usr/local/lib/toolchain

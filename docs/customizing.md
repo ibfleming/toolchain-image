@@ -151,6 +151,35 @@ The GitHub CLI (`gh`) ships signed out, and the image never contains a token. Si
 sign-in is shared by your containers and kept across rebuilds. See
 [Authentication](auth.md#github-cli) for the alternatives.
 
+## Clipboard and browser
+
+Tools in the container that copy text or open a browser (`gh auth login`'s one-time code and
+sign-in page, OAuth sign-ins, lazygit) reach your machine:
+
+| Bridge     | In a VS Code terminal                                                       | In `./dev.sh --shell`, SSH, other terminals                                                               |
+| ---------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `xclip`    | Copies and pastes through the display VS Code forwards (WSLg on Windows)    | Copies with OSC 52, an escape sequence your terminal turns into a clipboard copy; paste with the terminal |
+| `xdg-open` | Opens the URL in your machine's browser through VS Code's `$BROWSER` helper | Prints the URL and copies it, to paste into your browser                                                  |
+
+In the shell, `copy` and `paste` do this by hand:
+
+```sh
+git log -1 --format=%H | copy   # a command's output onto your clipboard
+copy notes.md                   # a file
+paste                           # print the clipboard
+```
+
+They use whatever clipboard is there, so they work the same on a host with this shell config:
+`pbcopy`/`pbpaste` on a Mac, the Windows clipboard from WSL, `wl-copy`/`wl-paste` on Wayland,
+`xclip` on X, or else OSC 52. `paste` with arguments or with input piped in is still the standard
+`paste` (merging lines of files).
+
+`xclip` here is the image's wrapper (`/usr/local/bin/xclip`) in front of the real one: it tries the
+display first and falls back to OSC 52, so programs that copy with `xclip` just work. OSC 52 needs a
+terminal that supports it: VS Code, Windows Terminal, iTerm2, kitty, WezTerm, foot and Alacritty
+do; in tmux, set `set -g set-clipboard on`. Reading the clipboard needs the display: elsewhere,
+paste with your terminal (Ctrl+Shift+V, or Cmd+V on a Mac).
+
 ## Docker
 
 The `dev` image has the Docker CLI with the buildx and compose plugins, but no engine. Pick where

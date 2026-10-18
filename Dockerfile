@@ -126,7 +126,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update \
   && apt-get install -y --no-install-recommends \
       bash-completion clangd dnsutils gdb htop less lldb locales openssh-client \
-      procps socat valgrind vim-tiny zsh \
+      procps socat valgrind vim-tiny xclip zsh \
   && echo "${USERNAME} ALL=(root) NOPASSWD:ALL" > "/etc/sudoers.d/${USERNAME}" \
   && chmod 0440 "/etc/sudoers.d/${USERNAME}" \
   && visudo -cf "/etc/sudoers.d/${USERNAME}" \
@@ -210,6 +210,11 @@ RUN install -d -o "${USERNAME}" -g "${USERNAME}" -m 0700 "/home/${USERNAME}/.cla
 COPY --chmod=0755 scripts/dev_status.sh /usr/local/bin/dev-status
 COPY --chmod=0755 scripts/dev_wait.sh /usr/local/bin/dev-wait
 COPY --chmod=0755 scripts/dev_reset.sh /usr/local/bin/dev-reset
+# Clipboard and browser from the container to your machine: xclip (ahead of the real
+# /usr/bin/xclip) uses VS Code's forwarded display, or else OSC 52 through the terminal;
+# xdg-open uses VS Code's $BROWSER helper, or else prints and copies the URL.
+COPY --chmod=0755 scripts/clipboard.sh /usr/local/bin/xclip
+COPY --chmod=0755 scripts/xdg_open.sh /usr/local/bin/xdg-open
 
 COPY --chmod=0755 scripts/gen_zsh_completions.sh /usr/local/sbin/gen-zsh-completions
 RUN gen-zsh-completions
