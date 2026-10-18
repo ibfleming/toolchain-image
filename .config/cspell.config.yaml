@@ -92,6 +92,7 @@ words:
   - PYTHONIOENCODING
   - RECIPEPREFIX
   - reshim
+  - rmlastnl
   - rolebindings
   - rwxr
   - SAVEHIST

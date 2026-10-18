@@ -25,7 +25,9 @@ main() {
       ;;
     *) timeout="" ;;
   esac
-  if [[ ! "${timeout}" =~ ^[0-9]+$ ]]; then
+  # Decimal without a leading zero (bash reads "08" as bad octal), at most
+  # nine digits (no overflow).
+  if [[ ! "${timeout}" =~ ^(0|[1-9][0-9]{0,8})$ ]]; then
     echo "usage: dev-wait [-t|--timeout SECONDS]" >&2
     return 64
   fi

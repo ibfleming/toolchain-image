@@ -12,6 +12,11 @@
 #   breaking change bumps major (minor below 1.0.0), a `feat` minor, and
 #   anything else, or nothing (a rebuild with fresh OS packages), patch. The
 #   workflow creates the tag at the end, only if the run succeeds.
+# - Except when an earlier run already pushed that tag but failed before
+#   publishing its GitHub Release (a re-run): if the highest tag points at
+#   this commit and has no GitHub Release, the run releases it again
+#   (new_tag=false), instead of skipping to the next version. Needs gh, and
+#   GH_TOKEN in CI.
 #
 # STDOUT is the data ($GITHUB_OUTPUT); messages go to STDERR.
 
@@ -46,6 +51,30 @@ latest_tag() {
 #   The tag to compare against.
 # Outputs:
 #   The bump to STDOUT.
+#######################################
+# Print the highest vX.Y.Z tag if it points at HEAD and has no GitHub
+# Release, or nothing. Any other answer from gh than "not found" (network,
+# authentication) stops the run rather than risk releasing twice.
+# Outputs:
+#   The tag to STDOUT.
+#######################################
+pending_tag() {
+  local latest err
+  latest="$(latest_tag)"
+  if [[ -z "${latest}" ]] \
+    || [[ "$(git rev-list -n 1 "${latest}")" != "$(git rev-parse HEAD)" ]]; then
+    return 0
+  fi
+  if err="$(gh release view "${latest}" --json tagName 2>&1 >/dev/null)"; then
+    return 0
+  fi
+  if [[ "${err}" == *"not found"* ]]; then
+    echo "${latest}"
+    return 0
+  fi
+  log::fatal "can't tell whether ${latest} has a GitHub Release: ${err}"
+}
+
 #######################################
 bump_since() {
   local since="$1"
@@ -109,8 +138,15 @@ main() {
     if [[ "${GITHUB_REF:-refs/heads/main}" != "refs/heads/main" ]]; then
       log::fatal "releases run from main or a vX.Y.Z tag, not ${GITHUB_REF}"
     fi
-    tag="$(next_tag)"
-    new_tag="true"
+    tag="$(pending_tag)"
+    if [[ -n "${tag}" ]]; then
+      log::warn "${tag} is already tagged at this commit but has no GitHub" \
+        "Release (an earlier run failed after tagging): releasing it again"
+      new_tag="false"
+    else
+      tag="$(next_tag)"
+      new_tag="true"
+    fi
   fi
   printf 'version=%s\ntag=%s\nnew_tag=%s\n' "${tag#v}" "${tag}" "${new_tag}"
 }

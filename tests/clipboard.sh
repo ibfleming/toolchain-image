@@ -121,6 +121,15 @@ main() {
     has "${r}" "paste with your terminal"
   r="$(no_terminal 'xclip -bogus </dev/null')"
   check "rejects unknown options with 64" has "${r}" "rc=64"
+  r="$(in_terminal 'printf "filtered" | xclip -f')"
+  check "-f: copies, and prints the text too" \
+    has "${r}" "filtered$(osc52 c filtered)"
+  r="$(in_terminal 'echo trimmed | xclip -rmlastnl')"
+  check "-rmlastnl: drops the last newline" has "${r}" "$(osc52 c trimmed)"
+  r="$(in_terminal 'printf png | xclip -t image/png')"
+  check "no display: refuses a target that isn't text" \
+    has "${r}" "only takes text, not image/png"
+  check "and copies nothing" lacks "${r}" "]52;"
 
   browser_log="$(mktemp)"
   # shellcheck disable=SC2016 # $1 belongs to the fake browser script
@@ -172,6 +181,13 @@ main() {
   r="$(in_terminal \
     "DISPLAY=:5 ${ZSH_I} 'print -n round-trip | copy; paste'")"
   check "zsh copy, then paste, through the display" has "${r}" "round-trip"
+  r="$(no_terminal 'printf "\211PNG" | DISPLAY=:5 xclip -t image/png
+    DISPLAY=:5 xclip -t image/png -o | od -An -tx1')"
+  check "a display gets the target, and pastes it back" has "${r}" "89 50 4e 47"
+  r="$(no_terminal 'echo lines | DISPLAY=:5 xclip -r -f
+    DISPLAY=:5 xclip -o | od -An -c')"
+  check "a display gets -f: prints the text as it came" has "${r}" $'lines\n'
+  check "and -rmlastnl: no newline in the copy" lacks "${r}" '\n'
   pkill -x Xvfb || true
 
   return "${FAILED}"

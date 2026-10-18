@@ -11,6 +11,13 @@ on:
 permissions:
   contents: read
 
+# Every run step in bash with -e and pipefail ("bash" makes GitHub add -o pipefail; the implicit
+# default doesn't), so a failure inside a pipe (e.g. `script | tee -a "$GITHUB_OUTPUT"`) fails the
+# step instead of being masked by the last command.
+defaults:
+  run:
+    shell: bash
+
 # PRs: one group per branch, so a new push cancels the superseded run.
 # main: one group per commit (SHA), so every commit on main gets a complete run; a shared
 # group would still drop older *pending* runs even without cancel-in-progress.
