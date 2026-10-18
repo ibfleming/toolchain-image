@@ -15,6 +15,8 @@
 #
 # Usage: like xclip. Copies STDIN, or the files named, to the clipboard
 # (-selection clipboard|primary|secondary); -o prints it (display only).
+# -f also prints the text, -r drops its last newline; -t and -loops apply
+# with a display (OSC 52 takes only text).
 #
 # Exit status: 0 copied; 1 nothing could take it (no display, no terminal);
 # 64 bad usage.
@@ -76,18 +78,34 @@ osc52_copy() {
 }
 
 #######################################
+# Succeed when an X selection target is text, which OSC 52 can carry.
+# Arguments:
+#   Target (empty: xclip's default, text).
+#######################################
+text_target() {
+  case "$1" in
+    "" | UTF8_STRING | STRING | TEXT | COMPOUND_TEXT | text/plain*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+#######################################
 # Wait until the selection can be read, at most WAIT_TRIES x 50 ms. The real
 # xclip forks first and claims the selection from the background, so it can
 # return before the copy is there; a `copy; paste` right after would miss it.
+# Asks for the targets, which every owner answers, whatever it holds.
 # Globals:
 #   REAL_XCLIP, WAIT_TRIES
 # Arguments:
-#   Selection.
+#   Selection, then options for the real xclip (e.g. -display).
 #######################################
 wait_for_owner() {
+  local selection="$1"
+  shift
   local -i try
   for ((try = 0; try < WAIT_TRIES; try++)); do
-    if "${REAL_XCLIP}" -selection "$1" -o >/dev/null 2>&1; then
+    if "${REAL_XCLIP}" "$@" -selection "${selection}" -t TARGETS -o \
+      >/dev/null 2>&1; then
       return 0
     fi
     sleep 0.05
@@ -95,10 +113,10 @@ wait_for_owner() {
 }
 
 main() {
-  local selection="clipboard"
-  local mode="in"
+  local selection="clipboard" mode="in" target="" filter="" rmlastnl=""
   local arg
-  local -a files=() passthrough=("$@")
+  # Options handed on to the real xclip; the display, also to wait_for_owner.
+  local -a files=() options=() display=()
   while (($# > 0)); do
     arg="$1"
     shift
@@ -108,8 +126,24 @@ main() {
         shift || true
         ;;
       -o | -out) mode="out" ;;
-      -i | -in | -silent | -quiet | -verbose | -noutf8 | -f | -filter) ;;
-      -loops | -l | -target | -t | -display | -d) shift || true ;;
+      -f | -filter) filter=1 ;;
+      -r | -rmlastnl) rmlastnl=1 ;;
+      -noutf8) options+=("${arg}") ;;
+      # Foreground modes; copying here always returns once the copy is there.
+      -i | -in | -silent | -quiet | -verbose) ;;
+      -target | -t)
+        target="${1:-}"
+        options+=("${arg}" "${target}")
+        shift || true
+        ;;
+      -loops | -l)
+        options+=("${arg}" "${1:-}")
+        shift || true
+        ;;
+      -display | -d)
+        display=("${arg}" "${1:-}")
+        shift || true
+        ;;
       -h | -help | -version)
         exec "${REAL_XCLIP}" "${arg}"
         ;;
@@ -120,10 +154,11 @@ main() {
       *) files+=("${arg}") ;;
     esac
   done
+  options+=("${display[@]}")
 
   if [[ "${mode}" == "out" ]]; then
     if display_available; then
-      exec "${REAL_XCLIP}" "${passthrough[@]}"
+      exec "${REAL_XCLIP}" "${options[@]}" -selection "${selection}" -o
     fi
     log::error "can't read the clipboard here (no display): paste with" \
       "your terminal instead (Ctrl+Shift+V, or Cmd+V on a Mac)"
@@ -133,15 +168,28 @@ main() {
   DATA="$(mktemp)"
   trap 'rm -f -- "${DATA}"' EXIT
   cat -- "${files[@]:--}" >"${DATA}"
+  # -f: the text also goes on, as it came in.
+  if [[ -n "${filter}" ]]; then
+    cat -- "${DATA}"
+  fi
+  if [[ -n "${rmlastnl}" && -s "${DATA}" &&
+    "$(tail -c 1 -- "${DATA}" | od -An -tx1)" == " 0a" ]]; then
+    truncate -s -1 -- "${DATA}"
+  fi
   # The real xclip reads the text, then keeps serving it in the background:
   # in its own session, so closing the terminal doesn't end it (and the
   # copy with it), and with its output going nowhere, or a caller reading
   # ours would wait for it.
   if display_available \
-    && setsid "${REAL_XCLIP}" -selection "${selection}" -i "${DATA}" \
-      >/dev/null 2>&1; then
-    wait_for_owner "${selection}"
+    && setsid "${REAL_XCLIP}" "${options[@]}" -selection "${selection}" \
+      -i "${DATA}" >/dev/null 2>&1; then
+    wait_for_owner "${selection}" "${display[@]}"
     return 0
+  fi
+  if ! text_target "${target}"; then
+    log::error "the terminal's clipboard only takes text, not ${target}" \
+      "(needs a display)"
+    return 1
   fi
   case "${selection}" in
     p*) osc52_copy "${DATA}" p ;; # primary, or its abbreviations
