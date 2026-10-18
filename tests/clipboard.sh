@@ -11,6 +11,8 @@ set -euo pipefail
 
 readonly ESC=$'\e'
 readonly BEL=$'\a'
+# The image's interactive zsh (copy and paste are its functions), quietly.
+readonly ZSH_I="TOOLCHAIN_WELCOME=off zsh -ic"
 FAILED=0
 
 #######################################
@@ -133,6 +135,23 @@ main() {
     has "${r}" "open this in your browser: https://example.com/b"
   check "and copies it" has "${r}" "$(osc52 c https://example.com/b)"
 
+  r="$(in_terminal "${ZSH_I} 'print -n hi | copy'")"
+  check "zsh copy: a command's output, through OSC 52" \
+    has "${r}" "$(osc52 c hi)"
+  r="$(in_terminal "${ZSH_I} 'print -n filed > /tmp/g; copy /tmp/g'")"
+  check "zsh copy: a file" has "${r}" "$(osc52 c filed)"
+  r="$(in_terminal "${ZSH_I} 'copy'")"
+  check "zsh copy with nothing to copy shows its usage" \
+    has "${r}" "usage: <command> | copy"
+  r="$(in_terminal "${ZSH_I} 'paste'")"
+  check "zsh paste without a display points at the terminal's paste" \
+    has "${r}" "paste with your terminal"
+  r="$(in_terminal "${ZSH_I} 'print -l a b >/tmp/p1; print -l 1 2 >/tmp/p2
+    paste /tmp/p1 /tmp/p2'")"
+  check "zsh paste with files is still paste(1)" has "${r}" $'a\t1\nb\t2'
+  r="$(in_terminal "${ZSH_I} 'print piped | paste'")"
+  check "and with piped input" has "${r}" "piped"
+
   if ! sudo apt-get update -qq >/dev/null 2>&1 \
     || ! sudo apt-get install -y -qq --no-install-recommends xvfb \
       >/dev/null 2>&1; then
@@ -150,6 +169,9 @@ main() {
     lacks "${r}" "]52;"
   r="$(no_terminal 'DISPLAY=:5 xclip -selection clipboard -o')"
   check "and pastes from it" has "${r}" "via display"
+  r="$(in_terminal \
+    "DISPLAY=:5 ${ZSH_I} 'print -n round-trip | copy; paste'")"
+  check "zsh copy, then paste, through the display" has "${r}" "round-trip"
   pkill -x Xvfb || true
 
   return "${FAILED}"

@@ -223,6 +223,7 @@ _welcome_main() {
     'fkill fuzzy-picks processes to kill'
     'extract unpacks an archive of any common format'
     'mkcd <dir> creates a directory and changes into it'
+    '<command> | copy puts its output on your clipboard; paste prints it'
     'Your own aliases go in ~/.config/zsh/local.zsh'
     'reload restarts zsh after you change its config'
     'welcome keys lists every alias, function and binding'
@@ -269,7 +270,8 @@ _welcome_keys() {
     'prefix+Up' 'history search' Tab 'fuzzy menu' reload 'restart zsh' path '$PATH' x 'chmod +x'
   rows+=(-- "%F{$purple}files%f")
   _welcome_pack z jump zi 'pick dir' 'z -' back fe 'edit file' fcd cd 'l/ll/la' list lt tree b bat \
-    mkcd 'mkdir+cd' extract unpack fkill 'kill process' '.. ...' up
+    mkcd 'mkdir+cd' extract unpack fkill 'kill process' '.. ...' up copy 'to clipboard' \
+    paste 'from clipboard'
   rows+=(-- "%F{$purple}git%f")
   _welcome_pack g git gs status ga/gaa add gap 'add -p' gc commit gca amend gd diff gds staged \
     gf fetch gl pull gp push gpf 'push --lease' gsw/gswc switch gb branches gbf 'fuzzy branch' \

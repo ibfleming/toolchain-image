@@ -161,6 +161,19 @@ sign-in page, OAuth sign-ins, lazygit) reach your machine:
 | `xclip`    | Copies and pastes through the display VS Code forwards (WSLg on Windows)    | Copies with OSC 52, an escape sequence your terminal turns into a clipboard copy; paste with the terminal |
 | `xdg-open` | Opens the URL in your machine's browser through VS Code's `$BROWSER` helper | Prints the URL and copies it, to paste into your browser                                                  |
 
+In the shell, `copy` and `paste` do this by hand:
+
+```sh
+git log -1 --format=%H | copy   # a command's output onto your clipboard
+copy notes.md                   # a file
+paste                           # print the clipboard
+```
+
+They use whatever clipboard is there, so they work the same on a host with this shell config:
+`pbcopy`/`pbpaste` on a Mac, the Windows clipboard from WSL, `wl-copy`/`wl-paste` on Wayland,
+`xclip` on X, or else OSC 52. `paste` with arguments or with input piped in is still the standard
+`paste` (merging lines of files).
+
 `xclip` here is the image's wrapper (`/usr/local/bin/xclip`) in front of the real one: it tries the
 display first and falls back to OSC 52, so programs that copy with `xclip` just work. OSC 52 needs a
 terminal that supports it: VS Code, Windows Terminal, iTerm2, kitty, WezTerm, foot and Alacritty
