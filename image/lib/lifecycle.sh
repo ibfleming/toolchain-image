@@ -20,6 +20,8 @@
 # Changes no shell options; sourcing it twice is harmless. Needs bash 4.2+.
 #
 # Environment:
+#   TOOLCHAIN_STATE_SINCE  a file whose time marks the container's start
+#                          (default: /proc/1); for tests
 #   TOOLCHAIN_STATE_DIR  the state directory (default:
 #                        ${XDG_STATE_HOME:-~/.local/state}/toolchain/lifecycle)
 
@@ -122,8 +124,8 @@ lifecycle::_prefix() {
 lifecycle::stage() {
   local stage="$1"
   shift
-  local dir status_file started prefix
-  local -i status=0 seconds
+  local dir status_file fifo started prefix
+  local -i status=0 seconds tee_pid waited
   lifecycle::_errexit_probe
   if [[ "${REPLY}" == ignored ]]; then
     log::error "lifecycle::stage ${stage}: called from a condition (if," \
@@ -139,8 +141,17 @@ lifecycle::stage() {
   lifecycle::_mark "${stage}.started"
   : >"${dir}/${stage}.log"
   status_file="${dir}/.${stage}.status"
+  fifo="${dir}/.${stage}.out"
   started="${SECONDS}"
   log::info "${prefix}started"
+  # The step's output goes through a named pipe to tee (terminal and log), and
+  # the stage waits for the step itself, not for whatever still holds that
+  # pipe: a process the step leaves running in the background would keep tee
+  # going forever.
+  rm -f "${fifo}"
+  mkfifo "${fifo}"
+  tee -a "${dir}/${stage}.log" <"${fifo}" >&2 &
+  tee_pid=$!
   (
     set +e
     (
@@ -148,9 +159,21 @@ lifecycle::stage() {
       "$@"
     )
     echo "$?" >"${status_file}"
-  ) 2>&1 | tee -a "${dir}/${stage}.log" >&2
-  # Colors stay on the terminal; the log file is for reading with any tool.
-  sed -i "s/${_LIFECYCLE_ESCAPES}//g" "${dir}/${stage}.log"
+  ) >"${fifo}" 2>&1 &
+  wait "$!"
+  for ((waited = 0; waited < 20; waited++)); do
+    kill -0 "${tee_pid}" 2>/dev/null || break
+    sleep 0.1
+  done
+  if kill -0 "${tee_pid}" 2>/dev/null; then
+    log::warn "${prefix}a background process still writes to this stage's" \
+      "output; detach it (command </dev/null >file 2>&1 &)"
+  else
+    wait "${tee_pid}" || true
+    # Colors stay on the terminal; the log file is for reading with any tool.
+    sed -i "s/${_LIFECYCLE_ESCAPES}//g" "${dir}/${stage}.log"
+  fi
+  rm -f "${fifo}"
   status="$(<"${status_file}")"
   rm -f "${status_file}"
   seconds=$((SECONDS - started))
@@ -211,30 +234,49 @@ lifecycle::ready() {
 }
 
 #######################################
+# Succeed when a marker file exists and was written since the container
+# started (the start of its PID 1, or TOOLCHAIN_STATE_SINCE's file). The
+# state directory outlives a stop and start, and a previous start's ready or
+# failed says nothing about this one.
+# Globals:
+#   TOOLCHAIN_STATE_SINCE
+# Arguments:
+#   Marker file.
+#######################################
+lifecycle::_current() {
+  local since="${TOOLCHAIN_STATE_SINCE:-/proc/1}"
+  [[ -f "$1" ]] && { [[ ! -e "${since}" ]] || [[ ! "$1" -ot "${since}" ]]; }
+}
+
+#######################################
 # Set REPLY to the container's overall state:
 #   created         nothing recorded yet
 #   bootstrapping   a stage has started and not finished
 #   partial         stages finished, but not marked ready
 #   failed          a stage failed
 #   ready           marked ready
+# ready, failed and started count only if written since the container
+# started (lifecycle::_current); done markers from earlier starts still count.
 # Globals:
 #   REPLY (set)
 #######################################
 lifecycle::state() {
-  local dir started
+  local dir marker
   lifecycle::dir
   dir="${REPLY}"
-  if [[ -f "${dir}/ready" ]]; then
+  if lifecycle::_current "${dir}/ready"; then
     REPLY="ready"
     return 0
   fi
-  if compgen -G "${dir}/*.failed" >/dev/null; then
-    REPLY="failed"
-    return 0
-  fi
-  for started in "${dir}"/*.started; do
-    [[ -f "${started}" ]] || continue
-    if [[ ! -f "${started%.started}.done" ]]; then
+  for marker in "${dir}"/*.failed; do
+    if lifecycle::_current "${marker}"; then
+      REPLY="failed"
+      return 0
+    fi
+  done
+  for marker in "${dir}"/*.started; do
+    if lifecycle::_current "${marker}" \
+      && [[ ! -f "${marker%.started}.done" ]]; then
       REPLY="bootstrapping"
       return 0
     fi

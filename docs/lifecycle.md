@@ -93,6 +93,11 @@ main "$@"
 Call `lifecycle::stage` and `lifecycle::once` as plain commands. From a condition (`if`, `||`, `!`),
 bash ignores errexit inside them, so a failing step would carry on; they refuse to run there.
 
+A step that starts something meant to keep running (a database, a watcher) must detach it, as
+lifecycle hooks generally require: `command </dev/null >"$HOME/command.log" 2>&1 &`. The stage
+waits for its step, not for that process, and warns if one still writes to the stage's output.
+Long-running services are better in Compose or a task.
+
 ### `validate.sh`: checks with a fix in the message
 
 ```bash
@@ -113,7 +118,9 @@ failures.
 
 State is kept inside the container, in `~/.local/state/toolchain/lifecycle/` (or
 `$TOOLCHAIN_STATE_DIR`), not in the workspace. A rebuild starts from nothing, like the container
-itself, so a marker never claims work that the new container doesn't have.
+itself, so a marker never claims work that the new container doesn't have. A container that is stopped and started again keeps its state: a `ready` or `failed` from
+before that start doesn't count, so `dev-wait` waits for this start's `post-start`; `done` markers
+(such as dependencies installed once) still do.
 
 | Command                 | What it does                                                                                     |
 | ----------------------- | ------------------------------------------------------------------------------------------------ |

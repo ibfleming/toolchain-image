@@ -138,6 +138,34 @@ main() {
   check "and keeps the text" grep -q "INFO  bash: hello" \
     "${STATE_ROOT}/color/post-create.log"
 
+  # shellcheck disable=SC2016 # expanded in the case's bash
+  r="$(run_case background 'step() { sleep 3 & echo started; }
+    t=${SECONDS}; lifecycle::stage post-start step
+    echo "took=$((SECONDS - t))"')"
+  check "a step's background process doesn't hold the stage" \
+    matches "${r}" "took=[0-2]"
+  check "and the stage warns how to detach it" \
+    matches "${r}" "a background process still writes"
+  check "the stage still records done" has background post-start.done
+  check "and logs the step's output" \
+    grep -q started "${STATE_ROOT}/background/post-start.log"
+
+  # A restart: markers written before the container's start don't count.
+  r="$(run_case restart 'lifecycle::stage post-create true
+    lifecycle::stage post-start true; lifecycle::ready
+    sleep 1; touch /tmp/started-again
+    export TOOLCHAIN_STATE_SINCE=/tmp/started-again
+    lifecycle::state; echo "state=${REPLY}"
+    dev-wait -t 1 >/dev/null 2>&1 || echo "wait=$?"')"
+  check "after a restart, the last start's ready doesn't count" \
+    matches "${r}" "state=partial"
+  check "so dev-wait waits instead of returning at once" \
+    matches "${r}" "wait=2"
+  run_case restart-failed 'lifecycle::stage post-start false' >/dev/null
+  r="$(run_case restart-failed 'sleep 1; touch /tmp/started-again2
+    TOOLCHAIN_STATE_SINCE=/tmp/started-again2 dev-status -q')"
+  check "nor does the last start's failure" matches "${r}" $'partial|created'
+
   r="$(run_case rerun 'lifecycle::stage post-create true; lifecycle::ready
     lifecycle::stage post-start true; lifecycle::state; echo "state=${REPLY}"')"
   check "starting a stage clears ready" matches "${r}" "state=partial"
