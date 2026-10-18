@@ -18,7 +18,9 @@ set -euo pipefail
 
 readonly HOST_SOCK="/var/run/docker-host.sock"
 readonly SOCK="/var/run/docker.sock"
-readonly PROXY_LOG="/tmp/docker-socket-proxy.log"
+# Root-only directory: in world-writable /tmp, another user could plant a file
+# or link at this path before root writes to it.
+readonly PROXY_LOG="/var/log/docker-socket-proxy.log"
 
 # shellcheck source=image/lib/log.sh
 source "${TOOLCHAIN_LIB_DIR:-/usr/local/lib/toolchain}/log.sh"
