@@ -40,10 +40,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: Free disk space (images are ~2 GB each; Trivy exports them again)
-        run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
-          df -h /
+      - name: Disk space (images are ~2 GB each; Trivy exports them again)
+        run: scripts/free_disk.sh 15
 
       - name: Version
         id: version
@@ -73,11 +71,14 @@ jobs:
 
       - name: Test the pushed digests
         run: |
-          docker pull "$REGISTRY/staging/ci@$CI_DIGEST"
-          docker pull "$REGISTRY/staging/dev@$DEV_DIGEST"
+          # Both at once; each pull's failure still fails the step.
+          docker pull -q "$REGISTRY/staging/ci@$CI_DIGEST" & ci_pull=$!
+          docker pull -q "$REGISTRY/staging/dev@$DEV_DIGEST" & dev_pull=$!
+          wait "$ci_pull"
+          wait "$dev_pull"
           docker tag "$REGISTRY/staging/ci@$CI_DIGEST" toolchain/ci:local
           docker tag "$REGISTRY/staging/dev@$DEV_DIGEST" toolchain/dev:local
-          make test
+          make -j "$(nproc)" --output-sync=target test
 
       - name: Vulnerability gate
         run: |

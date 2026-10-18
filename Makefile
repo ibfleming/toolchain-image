@@ -81,8 +81,11 @@ screenshots: ## Render the README screenshots of `welcome` from the local dev im
 changelog: ## Write CHANGELOG.md from Conventional Commits (git-cliff; also attached to each release)
   git-cliff --output CHANGELOG.md
 
-scan: ## Vulnerability gate + markdown report for the local ci/dev images (Trivy)
-  @rc=0; for img in $(CI_IMG) $(DEV_IMG); do scripts/scan.sh $$img || rc=1; done; exit $$rc
+# The images `make scan` checks. CI scans only dev, which contains everything in ci.
+SCAN_IMGS ?= $(CI_IMG) $(DEV_IMG)
+
+scan: ## Vulnerability gate + markdown report for the local images (Trivy; SCAN_IMGS=... to pick)
+  @rc=0; for img in $(SCAN_IMGS); do scripts/scan.sh $$img || rc=1; done; exit $$rc
 
 # Commits to lint: COMMITS_FROM..HEAD (default: since the merge-base with origin/main).
 # An empty or all-zero COMMITS_FROM (e.g. a brand-new branch push) lints only HEAD.

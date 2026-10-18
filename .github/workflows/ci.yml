@@ -38,6 +38,7 @@ jobs:
   build-test:
     runs-on: ubuntu-26.04
     permissions:
+      actions: read # find the last release run, whose build cache CI reuses
       contents: read
       packages: read # read the release pipeline's registry build cache
     env:
@@ -53,10 +54,21 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
-      - name: Free disk space (images are ~2 GB each; Trivy exports them again)
+      - name: Disk space (images are ~2 GB each; Trivy exports them again)
+        run: scripts/free_disk.sh 15
+      # The release builds with APT_REFRESH=<run id>-<attempt> to fetch current Debian packages, and
+      # pushes its build cache. Using the last release's value here matches that cache, so CI
+      # rebuilds only the layers a change touches, on that release's packages (refreshed by every
+      # release, at least weekly); the release gate still scans freshly built images.
+      - name: Reuse the last release's build cache
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
-          df -h /
+          key="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow release.yml --status success \
+            --limit 1 --json databaseId,attempt -q '.[0] | "\(.databaseId)-\(.attempt)"' || true)"
+          [[ $key == null-null ]] && key=""
+          echo "APT_REFRESH=${key}" >> "$GITHUB_ENV"
+          echo "APT_REFRESH=${key:-<none: no release yet>}"
       - name: Build ci + dev (local)
         env:
           GITHUB_TOKEN: ${{ github.token }} # BuildKit secret for mise downloads, never a build arg
@@ -67,8 +79,13 @@ jobs:
           docker buildx prune --builder toolchain --all --force >/dev/null # images are loaded; drop build cache
           df -h /
       - name: Test
-        run: make test
+        run: make -j "$(nproc)" --output-sync=target test
       - name: Spelling
         run: make spell
+      # dev is built FROM ci and only adds to it, so scanning dev covers ci's packages too.
+      # Releases scan both.
       - name: Vulnerability gate
-        run: make scan >> "$GITHUB_STEP_SUMMARY"
+        run: make scan SCAN_IMGS=toolchain/dev:local >> "$GITHUB_STEP_SUMMARY"
+      - name: Disk use
+        if: always()
+        run: df -h /
