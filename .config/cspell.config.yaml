@@ -43,6 +43,7 @@ words:
   - dandavison
   - dups
   - esac
+  - extraheader
   - fkill
   - fpath
   - gclean
