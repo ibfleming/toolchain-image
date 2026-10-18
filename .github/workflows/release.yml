@@ -40,8 +40,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
+      # A release holds more than CI (its build cache until pushed, then both pulled images, then
+      # Trivy's exports), so it keeps the full cleanup's headroom.
       - name: Disk space (images are ~2 GB each; Trivy exports them again)
-        run: scripts/free_disk.sh 15
+        run: scripts/free_disk.sh 30
 
       - name: Version
         id: version

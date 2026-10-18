@@ -54,8 +54,9 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
+      # A run uses ~7 GB (images, then Trivy's export of dev); runners start with ~15 GB free.
       - name: Disk space (images are ~2 GB each; Trivy exports them again)
-        run: scripts/free_disk.sh 15
+        run: scripts/free_disk.sh 20
       # The release builds with APT_REFRESH=<run id>-<attempt> to fetch current Debian packages, and
       # pushes its build cache. Using the last release's value here matches that cache, so CI
       # rebuilds only the layers a change touches, on that release's packages (refreshed by every
@@ -79,7 +80,9 @@ jobs:
           docker buildx prune --builder toolchain --all --force >/dev/null # images are loaded; drop build cache
           df -h /
       - name: Test
-        run: make -j "$(nproc)" --output-sync=target test
+        run: |
+          make -j "$(nproc)" --output-sync=target test
+          df -h /
       - name: Spelling
         run: make spell
       # dev is built FROM ci and only adds to it, so scanning dev covers ci's packages too.

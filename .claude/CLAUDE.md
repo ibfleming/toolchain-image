@@ -60,7 +60,7 @@ Read first: [README.md](../README.md) (usage, development, releases), [docs/arch
 - **Test fixtures:** never use `.invalid` hostnames. Inherited DNS search domains can make them resolve to real hosts; point fake servers at `https://127.0.0.1:1`.
 - **CI:**
   - GitHub runners use the classic image store, which can't load attested images (hence `_local` disables attestations).
-  - The images are large: Trivy runs once per image, and `scripts/free_disk.sh` deletes preinstalled SDKs only when the runner has less than 15 GB free (deleting them costs a minute or two).
+  - The images are large: Trivy runs once per image, and `scripts/free_disk.sh` deletes preinstalled SDKs, quickest first, only until there is enough room: 20 GB for CI (a run uses ~7 GB; runners start with ~15 GB free), 30 GB for releases (they hold more). Deleting all of them costs a minute or two.
   - Speed: CI reuses the release's registry build cache by building with the last successful release run's `APT_REFRESH` (`<run id>-<attempt>`), so only changed layers rebuild, on that release's Debian packages; releases always refresh them. `_local` exports uncompressed (only loaded locally). Tests run with `make -j "$(nproc)" --output-sync=target test`, so tests must not share containers, volumes or work folders. CI scans only `dev` (it contains `ci`); releases scan both.
 - **Renovate's local dry run** (`renovate --platform=local --dry-run=extract`) only sees git-tracked files.
 - **Third-party zsh config:** the zsh setup was _inspired by_ smeltery/zsh, which is PolyForm Shield licensed. Never copy code from it.
