@@ -30,7 +30,7 @@ readonly WAIT_TRIES=40
 # a failed display attempt (removed on exit).
 DATA=""
 
-# shellcheck source=scripts/lib/log.sh
+# shellcheck source=image/lib/log.sh
 source /usr/local/lib/toolchain/log.sh
 
 #######################################

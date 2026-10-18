@@ -38,8 +38,8 @@ readonly RENDER_BASH='
     node render.js "${f}.ansi" "${f}.png" /font.ttf "$2"
   done'
 
-# shellcheck source=scripts/lib/log.sh
-source "${REPO_DIR}/scripts/lib/log.sh"
+# shellcheck source=image/lib/log.sh
+source "${REPO_DIR}/image/lib/log.sh"
 # shellcheck source=scripts/lib/host_path.sh
 source "${REPO_DIR}/scripts/lib/host_path.sh"
 

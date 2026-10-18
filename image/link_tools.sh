@@ -12,7 +12,7 @@ set -euo pipefail
 
 readonly DEST_DIR="/usr/local/bin"
 
-# shellcheck source=scripts/lib/log.sh
+# shellcheck source=image/lib/log.sh
 source "${TOOLCHAIN_LIB_DIR:-/usr/local/lib/toolchain}/log.sh"
 
 # Tool name -> the bin directory that provides it (to catch duplicates).

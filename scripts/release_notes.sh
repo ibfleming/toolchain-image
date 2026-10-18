@@ -14,7 +14,7 @@ set -euo pipefail
 
 readonly OIDC_ISSUER="https://token.actions.githubusercontent.com"
 
-# shellcheck source=scripts/lib/log.sh
+# shellcheck source=image/lib/log.sh
 source "${BASH_SOURCE[0]%/*}/lib/log.sh"
 
 #######################################

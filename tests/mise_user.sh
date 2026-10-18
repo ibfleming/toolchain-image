@@ -21,8 +21,8 @@ readonly SHADOW_TOOL="aqua:helm/helm@3.17.0"
 readonly WORKSPACE="/workspaces/demo"
 readonly DATA_DIR="/home/vscode/.local/share/mise"
 
-# shellcheck source=scripts/lib/log.sh
-source "${BASH_SOURCE[0]%/*}/../scripts/lib/log.sh"
+# shellcheck source=image/lib/log.sh
+source "${BASH_SOURCE[0]%/*}/../image/lib/log.sh"
 
 CONTAINER=""
 FAILED=0

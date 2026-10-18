@@ -150,7 +150,7 @@ releases are signed by the workflow on `main`, so their identity ends in
    (linted as Conventional Commits) and the branch's **commit messages** as the body (keeps PR
    descriptions, such as Renovate's update tables, out of `main`'s history).
 3. Install the [Renovate](https://github.com/apps/renovate) GitHub App in a mode that opens pull
-   requests. Updates arrive weekly in UTC; set `timezone` in `renovate.json` if you want a local
+   requests. Updates arrive weekly in UTC; set `timezone` in `.github/renovate.json` if you want a local
    schedule.
 4. Push a `v0.1.0` tag to cut the first release. After that, releases happen on every `vX.Y.Z`
    tag, on demand (`workflow_dispatch` on `main`), and weekly. Weekly and on-demand releases
@@ -166,7 +166,7 @@ Tools, theme, Claude Code policy and base image are all yours to change. See
 ## Develop
 
 Requires Docker with Buildx, GNU Make and [mise](https://mise.jdx.dev). `mise install` provides
-every lint, test and release tool at the pinned versions from [`mise.toml`](mise.toml).
+every lint, test and release tool at the pinned versions from [`.config/mise.toml`](.config/mise.toml).
 
 | Command                                      | What it does                                                                                                                                                                              |
 | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -230,6 +230,7 @@ the k9s skin, also Apache-2.0).
 
 ## Documentation
 
+- [Layout](docs/layout.md): what goes where in this repository
 - [Architecture](docs/architecture.md): what belongs in the image, `.devcontainer/`, `.vscode/` and
   personal settings, and what a consumer repository owns
 - [Authentication](docs/auth.md): SSH, git, GitHub CLI, registries, Kubernetes, cloud and AI

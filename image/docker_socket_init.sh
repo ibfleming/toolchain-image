@@ -20,7 +20,7 @@ readonly HOST_SOCK="/var/run/docker-host.sock"
 readonly SOCK="/var/run/docker.sock"
 readonly PROXY_LOG="/tmp/docker-socket-proxy.log"
 
-# shellcheck source=scripts/lib/log.sh
+# shellcheck source=image/lib/log.sh
 source "${TOOLCHAIN_LIB_DIR:-/usr/local/lib/toolchain}/log.sh"
 
 #######################################

@@ -22,7 +22,7 @@ readonly BREAKING_TITLE_RE='^[a-z]+(\([^)]*\))?!:'
 readonly BREAKING_FOOTER_RE='^BREAKING[ -]CHANGE:'
 readonly FEAT_TITLE_RE='^feat(\([^)]*\))?:'
 
-# shellcheck source=scripts/lib/log.sh
+# shellcheck source=image/lib/log.sh
 source "${BASH_SOURCE[0]%/*}/lib/log.sh"
 
 #######################################

@@ -25,8 +25,8 @@ readonly PROJECT="${WORK}/my-project"
 readonly UP_TIMEOUT=300
 FAILED=0
 
-# shellcheck source=scripts/lib/log.sh
-source "${REPO_DIR}/scripts/lib/log.sh"
+# shellcheck source=image/lib/log.sh
+source "${REPO_DIR}/image/lib/log.sh"
 
 #######################################
 # Record one check.

@@ -10,7 +10,7 @@
 
 set -euo pipefail
 
-# shellcheck source=scripts/lib/lifecycle.sh
+# shellcheck source=image/lib/lifecycle.sh
 source /usr/local/lib/toolchain/lifecycle.sh
 
 readonly DEFAULT_TIMEOUT=600

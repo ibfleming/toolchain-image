@@ -13,7 +13,7 @@
 
 set -euo pipefail
 
-# shellcheck source=scripts/lib/log.sh
+# shellcheck source=image/lib/log.sh
 source /usr/local/lib/toolchain/log.sh
 
 main() {

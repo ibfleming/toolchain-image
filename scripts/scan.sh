@@ -1,6 +1,7 @@
 #!/bin/bash
 #
-# Vulnerability gate and report for one image (Trivy, pinned in mise.toml).
+# Vulnerability gate and report for one image (Trivy, pinned in
+# .config/mise.toml).
 #
 # Policy:
 #   BLOCK   fixable CRITICAL anywhere, and fixable HIGH/CRITICAL in OS
@@ -40,7 +41,7 @@ readonly JQ_TABLE='
           | "| `\($name)` | \($high) | \($crit) |"))
       | join("\n") end'
 
-# shellcheck source=scripts/lib/log.sh
+# shellcheck source=image/lib/log.sh
 source "${BASH_SOURCE[0]%/*}/lib/log.sh"
 
 #######################################

@@ -31,7 +31,8 @@ builder: ## Create the docker-container buildx builder (keeps attestations)
   @echo "builder: $(BUILDER)"
 
 # Shell files for shfmt (bash + zsh) and shellcheck (bash only: it has no zsh support).
-SH_SCRIPTS := $(wildcard scripts/*.sh scripts/lib/*.sh tests/*.sh template/.devcontainer/scripts/*.sh)
+SH_SCRIPTS := $(wildcard image/*.sh image/lib/*.sh scripts/*.sh scripts/lib/*.sh tests/*.sh)
+SH_SCRIPTS += $(wildcard template/.devcontainer/scripts/*.sh)
 # template/dev.sh is POSIX sh (macOS still ships bash 3.2); shfmt and shellcheck read its shebang.
 SH_SCRIPTS += template/dev.sh
 ZSH_FILES := config/zsh/zshrc $(wildcard config/zsh/*/*.zsh)
@@ -46,7 +47,7 @@ lint: ## Check formatting + lint on every file (CI gate; `make fmt` fixes most o
   RUST_LOG=warn taplo fmt --check
   prettier --check --log-level warn .
   markdownlint-cli2
-  hadolint Dockerfile
+  hadolint --config .config/hadolint.yaml Dockerfile
 
 fmt: ## Apply formatters in place (shfmt, taplo, prettier, markdownlint fixes); policy from .editorconfig
   shfmt --write $(SH_SCRIPTS) $(ZSH_FILES)
@@ -62,10 +63,10 @@ HOST_CURDIR := $(if $(and $(LOCAL_WORKSPACE_FOLDER),$(CONTAINER_WORKSPACE_FOLDER
   $(CONTAINER_WORKSPACE_FOLDER) $(CONTAINER_WORKSPACE_FOLDER)/%,$(CURDIR))),$(patsubst \
   $(CONTAINER_WORKSPACE_FOLDER)%,$(LOCAL_WORKSPACE_FOLDER)%,$(CURDIR)),$(CURDIR))
 
-spell: ## Spell-check the repo with cspell (runs in the dev image; config: cspell.config.yaml)
+spell: ## Spell-check the repo with cspell (runs in the dev image; config: .config/cspell.config.yaml)
   docker run --rm -u vscode -e NPM_CONFIG_UPDATE_NOTIFIER=false -v "$(HOST_CURDIR):/w:ro" -w /w $(DEV_IMG) \
     npx --yes cspell@10.3.6 lint --no-progress --gitignore '**/*' '.*' 'config/home/**/.*' 'config/home/.config/**' \
-    'template/.*' 'template/.devcontainer/**' 'template/.vscode/**'
+    'template/.*' 'template/.devcontainer/**' 'template/.vscode/**' '.config/**' '.github/**'
 
 lock: builder ## Regenerate toolchain/{,dev/,shell/}mise.lock using the image's pinned mise
   docker buildx build --builder $(BUILDER) --target mise --load -t $(MISE_IMG) -q . >/dev/null
@@ -93,14 +94,14 @@ COMMITS_FROM ?= $(shell git merge-base origin/main HEAD 2>/dev/null)
 
 check-commits: ## Lint commit messages (Conventional Commits, commitlint) from COMMITS_FROM to HEAD
   @if [ -z "$(COMMITS_FROM)" ] || [ -z "$$(echo '$(COMMITS_FROM)' | tr -d 0)" ]; then \
-    commitlint --last --verbose; \
+    commitlint --config .config/commitlint.config.mjs --last --verbose; \
   else \
-    commitlint --from "$(COMMITS_FROM)" --to HEAD --verbose; \
+    commitlint --config .config/commitlint.config.mjs --from "$(COMMITS_FROM)" --to HEAD --verbose; \
   fi
 
 check-pr-title: ## Lint a PR title (it becomes the squash commit): TITLE='feat: ...' make check-pr-title
   @test -n "$$TITLE" || { echo "check-pr-title: set TITLE" >&2; exit 2; }
-  @printf '%s\n' "$$TITLE" | commitlint --verbose
+  @printf '%s\n' "$$TITLE" | commitlint --config .config/commitlint.config.mjs --verbose
 
 bake-print: ## Show the resolved bake configuration
   docker buildx bake --print

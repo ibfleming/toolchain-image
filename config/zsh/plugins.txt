@@ -1,6 +1,6 @@
 # zsh plugins, pinned by git commit: name, GitHub repository, tag (for readability), commit.
 # A commit is content-addressed, so git verifies what it fetches; no checksum is needed. The image
-# (Dockerfile) and hosts read this file; Renovate updates tag and commit together (renovate.json).
+# (Dockerfile) and hosts read this file; Renovate updates tag and commit together (.github/renovate.json).
 zsh-autosuggestions zsh-users/zsh-autosuggestions v0.7.1 e52ee8ca55bcc56a17c828767a3f98f22a68d4eb
 zsh-syntax-highlighting zsh-users/zsh-syntax-highlighting 0.8.0 db085e4661f6aafd24e5acb5b2e17e4dd5dddf3e
 zsh-completions zsh-users/zsh-completions 0.36.0 28c5bdcaf81bb89e56d0df8267d822c3b8aed9e0

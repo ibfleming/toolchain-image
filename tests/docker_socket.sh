@@ -13,8 +13,8 @@ set -euo pipefail
 
 readonly HOST_SOCKET="/var/run/docker.sock"
 
-# shellcheck source=scripts/lib/log.sh
-source "${BASH_SOURCE[0]%/*}/../scripts/lib/log.sh"
+# shellcheck source=image/lib/log.sh
+source "${BASH_SOURCE[0]%/*}/../image/lib/log.sh"
 
 CONTAINER=""
 FAILED=0

@@ -43,7 +43,7 @@ indent_size = unset
 max_line_length = off
 
 # Renovate regex managers are single JSON strings that can't be wrapped.
-[renovate.json]
+[.github/renovate.json]
 max_line_length = off
 
 # Generated or vendored: checksums/URLs/upstream formatting.
