@@ -19,7 +19,13 @@ checks() {
   local docker_hint="can't reach the host's Docker: is it running, and is"
   docker_hint+=" its socket mounted (devcontainer.json)?"
   validate::tool git
-  validate::check "docker engine" "${docker_hint}" docker info
+  # Only with an engine mounted (the host's socket, or Docker-in-Docker's):
+  # without one, Docker isn't part of this container.
+  if [[ -S /var/run/docker.sock || -S /var/run/docker-host.sock ]]; then
+    validate::check "docker engine" "${docker_hint}" docker info
+  else
+    log::info "no Docker engine mounted; Docker check skipped"
+  fi
   # validate::env DATABASE_URL "set it in containerEnv in devcontainer.json"
   # validate::mount "${HOME}/.kube" "mount ~/.kube (devcontainer.json)"
   validate::report

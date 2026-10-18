@@ -11,17 +11,25 @@
     },
     {
       "label": "Container: reinstall dependencies",
-      "detail": "Forget that dependencies were installed, then run post-create again",
+      "detail": "Run post-create again from scratch, then the start checks (marks the container ready)",
       "type": "shell",
-      "command": "dev-reset dependencies && .devcontainer/scripts/post-create.sh",
+      "command": ".devcontainer/scripts/post-start.sh",
+      "dependsOn": ["Container: post-create again"],
       "problemMatcher": []
     },
     {
-      "label": "Container: re-run setup",
-      "detail": "Reinstall dependencies, then re-run the start checks (marks the container ready)",
+      "label": "Container: re-run start checks",
+      "detail": "Run post-start again: the readiness checks (marks the container ready)",
       "type": "shell",
       "command": ".devcontainer/scripts/post-start.sh",
-      "dependsOn": ["Container: reinstall dependencies"],
+      "problemMatcher": []
+    },
+    {
+      // A step of "reinstall dependencies"; on its own it would leave the container not ready.
+      "label": "Container: post-create again",
+      "type": "shell",
+      "command": "dev-reset dependencies && .devcontainer/scripts/post-create.sh",
+      "hide": true,
       "problemMatcher": []
     }
     // {

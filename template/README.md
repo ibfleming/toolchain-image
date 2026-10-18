@@ -34,7 +34,7 @@ dependencies are installed. `./dev.sh` waits until the container reports it's re
 | `./dev.sh --rebuild` | Throw the container away and start a fresh one (your volumes are kept)    |
 
 Inside the container, `dev-status` shows the same state, and **Terminal → Run Task** has
-"Container: status", "Container: reinstall dependencies" and "Container: re-run setup".
+"Container: status", "Container: reinstall dependencies" and "Container: re-run start checks".
 
 ## What's where
 

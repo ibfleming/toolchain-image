@@ -22,6 +22,10 @@ set -eu
 readonly CONTAINER_USER=vscode
 readonly WAIT_SECONDS=900
 readonly DEV_CONTAINERS_URL=https://code.visualstudio.com/docs/devcontainers
+# This script, by absolute path: main changes to its folder, after which a
+# relative $0 (e.g. repos/x/dev.sh) no longer resolves.
+SELF="$(cd "$(dirname -- "$0")" && pwd)/$(basename -- "$0")"
+readonly SELF
 
 #######################################
 # Print a message.
@@ -52,7 +56,7 @@ die() {
 #   The usage to STDOUT.
 #######################################
 usage() {
-  sed -n '/^# Usage:/,/^#   -h/s/^# \{0,1\}//p' "$0"
+  sed -n '/^# Usage:/,/^#   -h/s/^# \{0,1\}//p' "$SELF"
 }
 
 #######################################
@@ -129,17 +133,15 @@ hex() {
 }
 
 #######################################
-# Print the ID of this folder's dev container, if there is one.
+# Print the ID of this folder's running dev container, if there is one.
 # Globals:
 #   PWD
-# Arguments:
-#   "-a" to include stopped containers, or nothing.
 # Outputs:
 #   The container ID to STDOUT, or nothing.
 #######################################
 find_container() {
   for folder in "$PWD" "$(host_folder)"; do
-    id="$(docker ps -q ${1:+"$1"} \
+    id="$(docker ps -q \
       --filter "label=devcontainer.local_folder=$folder" | head -n 1)"
     if [ -n "$id" ]; then
       printf '%s' "$id"
@@ -222,7 +224,10 @@ wait_ready() {
 open_shell() {
   id="$(find_container)"
   if [ -z "$id" ]; then
-    if command -v devcontainer >/dev/null 2>&1; then
+    # Not on WSL: the CLI would label the container with the Linux path, VS
+    # Code (on Windows) with the UNC path, and they'd make two containers.
+    if [ -z "${WSL_DISTRO_NAME:-}" ] \
+      && command -v devcontainer >/dev/null 2>&1; then
       info "starting the dev container (devcontainer CLI)"
       devcontainer up --workspace-folder . >/dev/null
       id="$(find_container)"
@@ -251,17 +256,20 @@ open_shell() {
 # window closes.)
 #######################################
 remove_container() {
-  id="$(find_container -a)"
-  if [ -n "$id" ]; then
-    info "removing the dev container $id (volumes are kept); if VS Code" \
-      "has it open, choose 'Reload Window' when it asks"
-    docker rm -f "$id" >/dev/null
-  fi
+  ids="$(for folder in "$PWD" "$(host_folder)"; do
+    docker ps -aq --filter "label=devcontainer.local_folder=$folder"
+  done | sort -u)"
+  [ -n "$ids" ] || return 0
+  info "removing the dev container(s) $(printf '%s' "$ids" | tr '\n' ' ')" \
+    "(volumes are kept); if VS Code has one open, choose 'Reload Window'" \
+    "when it asks"
+  # shellcheck disable=SC2086 # one container ID per word
+  docker rm -f $ids >/dev/null
 }
 
 main() {
   # The repository root is where this script lives.
-  cd "$(dirname -- "$0")"
+  cd "$(dirname -- "$SELF")"
   [ -f .devcontainer/devcontainer.json ] \
     || die "no .devcontainer/devcontainer.json next to dev.sh"
   if in_container; then
