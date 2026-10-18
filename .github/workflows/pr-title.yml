@@ -9,6 +9,13 @@ on:
 permissions:
   contents: read
 
+# Every run step in bash with -e and pipefail ("bash" makes GitHub add -o pipefail; the implicit
+# default doesn't), so a failure inside a pipe (e.g. `script | tee -a "$GITHUB_OUTPUT"`) fails the
+# step instead of being masked by the last command.
+defaults:
+  run:
+    shell: bash
+
 jobs:
   conventional-commit-title:
     runs-on: ubuntu-26.04
