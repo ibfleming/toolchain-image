@@ -168,16 +168,26 @@ log::_emit() {
   printf -v ts '%(%Y-%m-%dT%H:%M:%S%z)T' -1
   tag="${TOOLCHAIN_LOG_TAG:-${0##*/}}"
   tag="${tag%.sh}"
+  local line="${message}"
+  # In GitHub Actions, a line starting with "::" is a workflow command: keep a
+  # message's line breaks from starting one (shown as ⏎ instead).
+  if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+    line="${line//$'\r'/}"
+    line="${line//$'\n'/ ⏎ }"
+  fi
   printf '%s%s%s %s%-5s%s %s%s:%s %s\n' \
     "${_LOG_DIM}" "${ts}" "${_LOG_RESET}" \
     "${_LOG_COLOR[${level}]:-}" "${level}" "${_LOG_RESET}" \
-    "${_LOG_TAG}" "${tag}" "${_LOG_RESET}" "${message}" >&2
+    "${_LOG_TAG}" "${tag}" "${_LOG_RESET}" "${line}" >&2
   if [[ "${GITHUB_ACTIONS:-}" == "true" ]] \
     && ((_LOG_SEVERITY[${level}] >= 30)); then
-    local kind="error"
+    local kind="error" title
     [[ "${level}" == "WARN" ]] && kind="warning"
+    log::_gha_escape "${tag}"
+    title="${REPLY//:/%3A}"
+    title="${title//,/%2C}"
     log::_gha_escape "${message}"
-    printf '::%s title=%s::%s\n' "${kind}" "${tag//[,:]/_}" "${REPLY}" >&2
+    printf '::%s title=%s::%s\n' "${kind}" "${title}" "${REPLY}" >&2
   fi
 }
 

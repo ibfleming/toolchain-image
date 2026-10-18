@@ -139,6 +139,18 @@ main() {
     matches "${result}" "::error title=bash::e"
   check "Actions: info is not annotated" lacks "${result}" "::notice"
 
+  result="$(run_log GITHUB_ACTIONS=true NO_COLOR=1 -- \
+    $'log::info "a\n::error::injected"; log::warn "b\r\n::add-mask::x"')"
+  check "Actions: a message can't start a workflow command" \
+    lacks "${result}" $'\n::error::injected'
+  check "Actions: nor through a CR" lacks "${result}" $'\n::add-mask::x'
+  check "Actions: line breaks show as ⏎" \
+    matches "${result}" "INFO  bash: a ⏎ ::error::injected"
+
+  result="$(run_log TOOLCHAIN_LOG_COLOR=never -- $'log::info "one\ntwo"')"
+  check "outside Actions, line breaks are kept" \
+    matches "${result}" $'one\ntwo'
+
   result="$(run_log TOOLCHAIN_LOG_COLOR=never -- \
     '(log::fatal bye) || echo "rc=$?"')"
   check "log::fatal logs FATAL and exits 1" \
