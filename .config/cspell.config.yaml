@@ -97,6 +97,7 @@ words:
   - SAVEHIST
   - schemafile
   - serviceaccounts
+  - setvariable
   - sharkdp
   - splashless
   - subshell
