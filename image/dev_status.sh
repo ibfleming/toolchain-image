@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Print the dev container's lifecycle state: overall, then each stage and
-# step, from the markers that scripts/lib/lifecycle.sh writes. Installed in
+# step, from the markers that image/lib/lifecycle.sh writes. Installed in
 # the dev image as /usr/local/bin/dev-status.
 #
 # Usage: dev-status [-q|--quiet]
@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-# shellcheck source=scripts/lib/lifecycle.sh
+# shellcheck source=image/lib/lifecycle.sh
 source /usr/local/lib/toolchain/lifecycle.sh
 
 #######################################

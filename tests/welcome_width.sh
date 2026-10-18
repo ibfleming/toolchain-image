@@ -13,8 +13,8 @@ readonly LONG_NAME="Acme Enterprise Linux Server for Workstations 9.4.1"
 REPO_DIR="$(cd "${BASH_SOURCE[0]%/*}/.." && pwd)"
 readonly REPO_DIR
 
-# shellcheck source=scripts/lib/log.sh
-source "${REPO_DIR}/scripts/lib/log.sh"
+# shellcheck source=image/lib/log.sh
+source "${REPO_DIR}/image/lib/log.sh"
 # shellcheck source=scripts/lib/host_path.sh
 source "${REPO_DIR}/scripts/lib/host_path.sh"
 

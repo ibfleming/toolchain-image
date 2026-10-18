@@ -25,7 +25,7 @@
 
 [[ -n "${_TOOLCHAIN_LIFECYCLE_LOADED:-}" ]] && return 0
 
-# shellcheck source=scripts/lib/log.sh
+# shellcheck source=image/lib/log.sh
 if [[ "${BASH_SOURCE[0]}" == */* ]]; then
   source "${BASH_SOURCE[0]%/*}/log.sh" || return 1
 else

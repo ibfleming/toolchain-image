@@ -14,7 +14,7 @@ set -euo pipefail
 
 readonly DEFAULT_DEST="/usr/local/share/zsh/site-functions"
 
-# shellcheck source=scripts/lib/log.sh
+# shellcheck source=image/lib/log.sh
 source "${TOOLCHAIN_LIB_DIR:-/usr/local/lib/toolchain}/log.sh"
 
 #######################################

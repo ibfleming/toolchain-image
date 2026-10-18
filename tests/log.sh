@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Tests for the logging library (scripts/lib/log.sh): levels, STDERR only,
+# Tests for the logging library (image/lib/log.sh): levels, STDERR only,
 # line format, colors and their switches, GitHub Actions annotations,
 # log::fatal, and sourcing twice. Each case runs in a fresh bash, because
 # colors are decided when the library is sourced.

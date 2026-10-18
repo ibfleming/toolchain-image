@@ -37,6 +37,7 @@ words:
   - COLORTERM
   - committerdate
   - compinit
+  - containerimage
   - crumbsless
   - customresourcedefinitions
   - dandavison

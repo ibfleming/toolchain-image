@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Tests for the lifecycle state library (scripts/lib/lifecycle.sh), the
-# validation library (scripts/lib/validate.sh) and the dev-status, dev-wait
+# Tests for the lifecycle state library (image/lib/lifecycle.sh), the
+# validation library (image/lib/validate.sh) and the dev-status, dev-wait
 # and dev-reset commands, as installed in the dev image. Each case gets a
 # fresh state directory.
 #

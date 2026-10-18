@@ -16,7 +16,7 @@ readonly RED_BG='38;2;224;108;117'    # One Dark red #e06c75
 readonly PURPLE_BG='38;2;198;120;221' # One Dark purple #c678dd
 readonly KUBE_ICON=$'\U000F10FE'
 
-# shellcheck source=scripts/lib/log.sh
+# shellcheck source=image/lib/log.sh
 source "${TOOLCHAIN_LIB_DIR:-/usr/local/lib/toolchain}/log.sh"
 
 FAILED=0

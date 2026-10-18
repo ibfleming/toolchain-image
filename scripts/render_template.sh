@@ -22,8 +22,8 @@ readonly PLACEHOLDER='ghcr.io/<owner>/toolchain/dev:<version>@sha256:<digest>'
 # Scratch folder for a .tar.gz output (removed on exit).
 WORK=""
 
-# shellcheck source=scripts/lib/log.sh
-source "${REPO_DIR}/scripts/lib/log.sh"
+# shellcheck source=image/lib/log.sh
+source "${REPO_DIR}/image/lib/log.sh"
 
 #######################################
 # Copy the template into a folder and fill in the image reference.

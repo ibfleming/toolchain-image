@@ -21,8 +21,8 @@ readonly SEMVER_RE='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
 # shellcheck disable=SC2016 # the backticks are literal Markdown
 readonly TOOL_ROW_SED='s/^\| `([^`]+)` \| ([^ |]+) \|.*/\1=\2/'
 
-# shellcheck source=scripts/lib/log.sh
-source "${BASH_SOURCE[0]%/*}/lib/log.sh"
+# shellcheck source=image/lib/log.sh
+source "${BASH_SOURCE[0]%/*}/../image/lib/log.sh"
 
 #######################################
 # Print the newest vX.Y.Z tag below a version, or the newest tag at all.

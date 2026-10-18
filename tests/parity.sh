@@ -20,8 +20,8 @@ readonly AWK_TOOLS='
     print k "=" v
   }'
 
-# shellcheck source=scripts/lib/log.sh
-source "${REPO_DIR}/scripts/lib/log.sh"
+# shellcheck source=image/lib/log.sh
+source "${REPO_DIR}/image/lib/log.sh"
 
 main() {
   local ci_image="${1:-}"

@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Tests for the dev image's clipboard and browser bridges (scripts/
-# clipboard.sh as xclip, scripts/xdg_open.sh as xdg-open): OSC 52 through a
+# clipboard.sh as xclip, image/xdg_open.sh as xdg-open): OSC 52 through a
 # terminal, the real xclip on a display (Xvfb, installed for the test, so it
 # needs network), the fallbacks and their errors.
 #

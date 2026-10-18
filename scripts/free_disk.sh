@@ -20,8 +20,8 @@ readonly -a REMOVABLE=(
   /usr/local/lib/android
 )
 
-# shellcheck source=scripts/lib/log.sh
-source "${REPO_DIR}/scripts/lib/log.sh"
+# shellcheck source=image/lib/log.sh
+source "${REPO_DIR}/image/lib/log.sh"
 
 #######################################
 # Print the free space on / in whole gigabytes.

@@ -27,7 +27,7 @@ if ((BASH_VERSINFO[0] < 4 || (BASH_VERSINFO[0] == 4 && \
   return 1
 fi
 
-# shellcheck source=scripts/lib/palette.sh
+# shellcheck source=image/lib/palette.sh
 if [[ "${BASH_SOURCE[0]}" == */* ]]; then
   source "${BASH_SOURCE[0]%/*}/palette.sh" || return 1
 else

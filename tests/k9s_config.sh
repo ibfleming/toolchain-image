@@ -20,7 +20,7 @@ readonly -a FILES=(
 )
 readonly -a CHECK=(uvx --quiet check-jsonschema@0.33.3)
 
-# shellcheck source=scripts/lib/log.sh
+# shellcheck source=image/lib/log.sh
 source "${TOOLCHAIN_LIB_DIR:-/usr/local/lib/toolchain}/log.sh"
 
 #######################################
