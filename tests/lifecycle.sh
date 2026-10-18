@@ -195,6 +195,9 @@ main() {
     matches "${r}" $'not ready after 1s .*\nrc=2$'
   r="$(run_case fresh 'dev-wait --bogus')"
   check "dev-wait rejects bad usage with 64" matches "${r}" $'\nrc=64$'
+  r="$(run_case fresh 'dev-wait -t 08')"
+  check "dev-wait rejects a leading zero with 64" \
+    matches "${r}" $'usage: .*\nrc=64$'
 
   r="$(run_case validate 'validate::tool bash; validate::tool no-such-tool
     validate::mount /etc; validate::env NOPE "set NOPE"; validate::report')"
