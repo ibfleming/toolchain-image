@@ -70,11 +70,11 @@ A host needs only:
 - Docker (Docker Desktop on Windows and macOS; Docker Engine on Linux, including inside WSL2)
 - VS Code with the Dev Containers extension
 
-Everything else comes from the image. Supported hosts:
+Everything else comes from the image. Supported hosts, and how each is validated:
 
-| Host                           | Status                                                        |
-| ------------------------------ | ------------------------------------------------------------- |
-| Linux + Docker Engine          | Supported; the images are tested in CI                        |
-| Windows 11 + WSL2 (+ Docker)   | Supported; clone into the WSL file system, not `/mnt/c`       |
-| macOS (Intel) + Docker Desktop | Expected to work (amd64 image); not yet validated             |
-| macOS (Apple Silicon)          | Runs the amd64 image under emulation until arm64 images exist |
+| Host                           | Status                                                                                                                                                                                  |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Linux + Docker Engine          | Supported. Every pull request and release brings the template up with the Dev Containers CLI and checks it end to end (`make test-template`)                                            |
+| Windows 11 + WSL2 (+ Docker)   | Supported, validated by hand: `./dev.sh`, `--shell`, `--status` and `--rebuild` from WSL with VS Code on Windows and Docker Engine in WSL. Clone into the WSL file system, not `/mnt/c` |
+| macOS (Intel) + Docker Desktop | Expected to work (amd64 image); not yet validated (issue #46)                                                                                                                           |
+| macOS (Apple Silicon)          | Runs the amd64 image under emulation until arm64 images exist (issue #46)                                                                                                               |
