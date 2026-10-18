@@ -24,6 +24,8 @@ set -euo pipefail
 readonly REAL_XCLIP="/usr/bin/xclip"
 # Terminals cap OSC 52 payloads; stay well under the common limits.
 readonly OSC52_MAX_BYTES=100000
+# How often to check that a copy through the display has arrived (50 ms apart).
+readonly WAIT_TRIES=40
 # The text being copied, buffered so the OSC 52 fallback still has it after
 # a failed display attempt (removed on exit).
 DATA=""
@@ -73,6 +75,25 @@ osc52_copy() {
   fi
 }
 
+#######################################
+# Wait until the selection can be read, at most WAIT_TRIES x 50 ms. The real
+# xclip forks first and claims the selection from the background, so it can
+# return before the copy is there; a `copy; paste` right after would miss it.
+# Globals:
+#   REAL_XCLIP, WAIT_TRIES
+# Arguments:
+#   Selection.
+#######################################
+wait_for_owner() {
+  local -i try
+  for ((try = 0; try < WAIT_TRIES; try++)); do
+    if "${REAL_XCLIP}" -selection "$1" -o >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 0.05
+  done
+}
+
 main() {
   local selection="clipboard"
   local mode="in"
@@ -119,6 +140,7 @@ main() {
   if display_available \
     && setsid "${REAL_XCLIP}" -selection "${selection}" -i "${DATA}" \
       >/dev/null 2>&1; then
+    wait_for_owner "${selection}"
     return 0
   fi
   case "${selection}" in

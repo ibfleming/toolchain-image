@@ -168,18 +168,18 @@ Tools, theme, Claude Code policy and base image are all yours to change. See
 Requires Docker with Buildx, GNU Make and [mise](https://mise.jdx.dev). `mise install` provides
 every lint, test and release tool at the pinned versions from [`mise.toml`](mise.toml).
 
-| Command                                      | What it does                                                                                           |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `make build`                                 | Build `ci` and `dev` as `toolchain/{ci,dev}:local`                                                     |
-| `make test`                                  | Structure, smoke, parity, prompt, k9s config, Docker socket and logging tests against the local images |
-| `make lint` / `make fmt`                     | Check / apply formatting and lint on every file (`.editorconfig` is the policy)                        |
-| `make spell`                                 | Spell-check the repository                                                                             |
-| `make scan`                                  | Vulnerability gate and report (Trivy) for the local images                                             |
-| `make shell` / `make shell-live`             | Interactive shell in the dev image; `-live` mounts `config/` so edits apply instantly                  |
-| `make lock`                                  | Regenerate the toolchain lock files after editing a manifest                                           |
-| `make check-commits` / `make check-pr-title` | Lint commit messages / a PR title (commitlint)                                                         |
-| `make changelog`                             | Write `CHANGELOG.md` from the commit history (git-cliff)                                               |
-| `make screenshots`                           | Re-render the README's `welcome` screenshots (`FONT=<Nerd Font Mono .ttf>`)                            |
+| Command                                      | What it does                                                                                                                                                                              |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `make build`                                 | Build `ci` and `dev` as `toolchain/{ci,dev}:local`                                                                                                                                        |
+| `make test`                                  | Structure, smoke, parity, prompt, k9s config, Docker socket and logging tests against the local images (`make -j "$(nproc)" --output-sync=target test` runs them in parallel, as CI does) |
+| `make lint` / `make fmt`                     | Check / apply formatting and lint on every file (`.editorconfig` is the policy)                                                                                                           |
+| `make spell`                                 | Spell-check the repository                                                                                                                                                                |
+| `make scan`                                  | Vulnerability gate and report (Trivy) for the local images                                                                                                                                |
+| `make shell` / `make shell-live`             | Interactive shell in the dev image; `-live` mounts `config/` so edits apply instantly                                                                                                     |
+| `make lock`                                  | Regenerate the toolchain lock files after editing a manifest                                                                                                                              |
+| `make check-commits` / `make check-pr-title` | Lint commit messages / a PR title (commitlint)                                                                                                                                            |
+| `make changelog`                             | Write `CHANGELOG.md` from the commit history (git-cliff)                                                                                                                                  |
+| `make screenshots`                           | Re-render the README's `welcome` screenshots (`FONT=<Nerd Font Mono .ttf>`)                                                                                                               |
 
 To add a tool: edit `toolchain/mise.toml` (or `toolchain/dev/mise.toml` for dev-only tools, or
 `toolchain/shell/mise.toml` for tools the shell config uses), run

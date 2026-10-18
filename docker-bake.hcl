@@ -130,7 +130,9 @@ group "default" { targets = ["ci", "dev"] }
 // disabled explicitly: the classic Docker image store (e.g. GitHub runners) cannot load the
 // manifest list they create. Release builds (`ci`, `dev` targets) keep SBOM + provenance.
 target "_local" {
-  output = ["type=docker"]
+  // Uncompressed: these images only go into the local image store, so compressing their layers
+  // (about 2 GB each, gzip on one core) only to unpack them again is wasted time.
+  output = ["type=docker,compression=uncompressed"]
   attest = ["type=provenance,disabled=true", "type=sbom,disabled=true"]
 }
 target "ci-local" {
