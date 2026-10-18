@@ -16,6 +16,35 @@ repository.
 **Not here:** OS packages and tools everyone needs (they belong in the image, or a derived image),
 long-running services (Compose, or a task), and anything personal.
 
+## What the image sets for you
+
+The `dev` image carries part of its dev container setup itself, in its `devcontainer.metadata`
+label. VS Code, the Dev Containers CLI and Codespaces merge it with `devcontainer.json` when they
+create the container, so these apply here without appearing in this folder:
+
+| Setting            | Value                                                                                                                      |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `remoteUser`       | `vscode`                                                                                                                   |
+| `postStartCommand` | `sudo /usr/local/sbin/docker-socket-init`: serves the mounted host Docker socket (does nothing without one)                |
+| Extensions         | Claude Code, EditorConfig, Python and Ruff, Go, clangd, CMake Tools, OpenTofu, YAML, Even Better TOML                      |
+| Editor settings    | The image's Python and clangd paths, format on save (Ruff, Go, OpenTofu), clangd for C/C++, Ninja for CMake, zsh terminals |
+
+How `devcontainer.json` combines with it:
+
+| In `devcontainer.json`                        | Result                                                                     |
+| --------------------------------------------- | -------------------------------------------------------------------------- |
+| `remoteUser`, `containerEnv` and other values | Yours win                                                                  |
+| Editor settings                               | Merged; yours win per setting                                              |
+| Extensions                                    | Added to the image's; `"-golang.go"` removes one                           |
+| Lifecycle commands (`postStartCommand`, ...)  | Both run: the image's first, then yours. The image's can't be switched off |
+| Mounts                                        | Added to the image's                                                       |
+
+To see exactly what an image carries:
+
+```sh
+docker image inspect <image> --format '{{index .Config.Labels "devcontainer.metadata"}}' | jq
+```
+
 ## Hook order
 
 On a new container: `initializeCommand` (on the host) → `onCreateCommand` → `updateContentCommand` →

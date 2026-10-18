@@ -101,6 +101,7 @@ target "dev" {
     // The dev container setup that ships with the image. Merged with the consuming repo's
     // devcontainer.json when the container is created (the repo's file wins on conflicts).
     // Never put secrets here: anyone who can pull the image can read this label.
+    // template/.devcontainer/README.md summarizes it for consumers: keep that table in step.
     "devcontainer.metadata" = jsonencode([{
       remoteUser = "vscode"
       // Serves a mounted host Docker socket to vscode; a no-op without one (see the template).
