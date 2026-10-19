@@ -16,8 +16,8 @@ node = "24.22.0"
 # Changelog + release notes from Conventional Commits (`make changelog`, release workflow).
 git-cliff = "2.14.2"
 # Conventional Commits 1.0.0 linting (`make check-commits`, PR titles in CI).
-"npm:@commitlint/cli" = "21.2.3"
-"npm:@commitlint/config-conventional" = "21.2.3"
+"npm:@commitlint/cli" = "21.2.4"
+"npm:@commitlint/config-conventional" = "21.2.4"
 # Markdown lint (structure, lists, headings, tables); prettier formats, this checks.
 "npm:markdownlint-cli2" = "0.23.3"
 "npm:prettier" = "3.9.10"
