@@ -138,12 +138,15 @@ main() {
   check "and keeps the text" grep -q "INFO  bash: hello" \
     "${STATE_ROOT}/color/post-create.log"
 
+  # The stage gives a leftover writer 2 s, then moves on: it must return well
+  # before the background process ends (SECONDS counts whole seconds, and a
+  # busy CI runner is slow, so leave a margin).
   # shellcheck disable=SC2016 # expanded in the case's bash
-  r="$(run_case background 'step() { sleep 3 & echo started; }
+  r="$(run_case background 'step() { sleep 8 & echo started; }
     t=${SECONDS}; lifecycle::stage post-start step
     echo "took=$((SECONDS - t))"')"
   check "a step's background process doesn't hold the stage" \
-    matches "${r}" "took=[0-2]"
+    matches "${r}" $'took=[0-5]\n'
   check "and the stage warns how to detach it" \
     matches "${r}" "a background process still writes"
   check "the stage still records done" has background post-start.done
