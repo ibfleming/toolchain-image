@@ -1,6 +1,6 @@
 # PRs are squash-merged and the PR title becomes the commit on main, so the title must follow
 # Conventional Commits. Separate from ci.yml so editing a title re-checks it without a rebuild.
-name: pr-title
+name: PR Title
 
 on:
   pull_request:
@@ -16,10 +16,21 @@ defaults:
   run:
     shell: bash
 
+# One group per PR: a title edit or a push cancels the superseded check.
+concurrency:
+  group: pr-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   conventional-commit-title:
+    name: Conventional Commit Title
     runs-on: ubuntu-26.04
+    timeout-minutes: 5
     steps:
+      - name: Harden the runner (egress audit)
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with:
+          egress-policy: audit
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false

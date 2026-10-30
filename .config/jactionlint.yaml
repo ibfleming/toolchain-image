@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/jdx/jactionlint/main/schema/jactionlint-config.json
+# GitHub Actions lint and security audit (`make lint`): actionlint's checks (syntax, expressions,
+# shellcheck on run: scripts) plus zizmor-equivalent security rules. The Makefile passes this file
+# with --config-file; a bare `jactionlint` reads .github/jactionlint.yaml and runs without it.
+# Online rules (impostor commits, version comments vs. pinned SHAs, known-vulnerable actions) run
+# in CI, where JACTIONLINT_ONLINE=1 is set; locally: JACTIONLINT_ONLINE=1 make lint.
+profile: pedantic
+
+rules:
+  # Actions may come only from these owners. A new owner is a supply chain decision: add it here
+  # in the same PR, with the reason in the commit message.
+  forbidden-uses:
+    level: error
+    allow:
+      - actions/*
+      - docker/*
+      - github/*
+      - jdx/*
+      - ossf/*
+      - step-security/*

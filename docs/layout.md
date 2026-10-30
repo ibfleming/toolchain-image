@@ -15,7 +15,7 @@ one obvious home.
 ├── scripts/                      repository tooling: release, scan, screenshots, CI helpers
 ├── tests/                        image and template tests
 ├── docs/                         documentation and design records
-├── .config/                      repository tool configuration (mise, cspell, commitlint, git-cliff, hadolint)
+├── .config/                      repository tool configuration (mise, cspell, commitlint, git-cliff, hadolint, jactionlint)
 ├── .github/                      workflows and Renovate
 └── .claude/                      instructions for Claude Code
 ```
@@ -50,8 +50,8 @@ with `make lint`:
 | `.taplo.toml`                         | Taplo and the VS Code Even Better TOML extension         |
 | `.gitignore`, `.dockerignore`         | git, and Docker (next to the build context)              |
 
-In `.config/`, mise, cspell and git-cliff find their files on their own; commitlint and hadolint are
-pointed there by the Makefile (`--config`).
+In `.config/`, mise, cspell and git-cliff find their files on their own; commitlint, hadolint and
+jactionlint are pointed there by the Makefile (`--config`, `--config-file`).
 
 Hosts that install the shell read `config/zsh`, `config/starship`, `config/git` and
 `toolchain/shell` from a pinned commit, so those paths are an interface: moving them breaks hosts at
