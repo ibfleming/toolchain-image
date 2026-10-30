@@ -9,7 +9,7 @@
 "aqua:cli/cli" = "2.102.0"
 
 # --- docker CLI plugins (the CLI itself comes from Docker's signed apt repo, see the Dockerfile)
-"aqua:docker/buildx" = "0.38.0"
+"aqua:docker/buildx" = "0.38.1"
 "aqua:docker/compose" = "5.6.0"
 
 # --- kubernetes
