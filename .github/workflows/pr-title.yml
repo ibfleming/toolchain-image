@@ -27,10 +27,30 @@ jobs:
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
-      - name: Harden the runner (egress audit)
+      - name: Harden the runner (egress allowlist)
         uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
-          egress-policy: audit
+          egress-policy: block
+          disable-sudo-and-containers: true
+          # Observed in audit mode (cold and warm mise caches): GitHub, and what mise and
+          # mise-action fetch (mise itself, tool downloads, Node.js and npm for the npm tools,
+          # Sigstore TUF and OSV for verification). Actions' own result storage is allowed
+          # implicitly. A new tool host after an update fails the job with the blocked domain in
+          # the annotations: add it here.
+          allowed-endpoints: >
+            api.github.com:443
+            github.com:443
+            objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            api.npmjs.org:443
+            registry.npmjs.org:443
+            npm.jsr.io:443
+            nodejs.org:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            endevco.github.io:443
+            api.osv.dev:443
+            tuf-repo-cdn.sigstore.dev:443
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
