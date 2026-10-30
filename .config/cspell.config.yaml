@@ -60,6 +60,7 @@ words:
   - hrel
   - httproutes
   - ignorefile
+  - intoto
   - jactionlint
   - jesseduffield
   - jsonencode
@@ -99,6 +100,7 @@ words:
   - rolebindings
   - rwxr
   - SAVEHIST
+  - sarif
   - schemafile
   - serviceaccounts
   - setvariable

@@ -142,6 +142,14 @@ vulnerability report. The identity above is for releases cut from a tag. Weekly 
 releases are signed by the workflow on `main`, so their identity ends in
 `release.yml@refs/heads/main`.
 
+The release assets (`template.tar.gz`, `CHANGELOG.md`) come with signed build provenance,
+attached to the release as `v<version>.intoto.jsonl`:
+
+```sh
+gh attestation verify template.tar.gz --bundle v<version>.intoto.jsonl \
+  --repo <owner>/<repo> --signer-workflow <owner>/<repo>/.github/workflows/release.yml
+```
+
 ## Running your own copy
 
 1. Fork the repository. The workflows publish to `ghcr.io/<your-owner>/toolchain/...` with no

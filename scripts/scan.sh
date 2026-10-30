@@ -17,8 +17,10 @@
 #           .config/trivyignore.yaml (exact binary, reason, expiry). The
 #           report still lists it; after the date it blocks again.
 #
-# Usage: scan.sh <image ref>
+# Usage: [SCAN_SARIF=<file>] scan.sh <image ref>
 # STDOUT is the Markdown report; exit status 1 means the gate failed.
+# With SCAN_SARIF set, the same findings are also written there as SARIF
+# (for GitHub code scanning), so the Security tab and the gate agree.
 
 set -euo pipefail
 
@@ -95,6 +97,27 @@ print_report() {
   fi
 }
 
+#######################################
+# Write Trivy's JSON report as SARIF.
+# Arguments:
+#   Trivy's JSON report.
+#   Output file.
+# Returns:
+#   Non-zero if the conversion fails.
+#######################################
+write_sarif() {
+  local report="$1"
+  local out="$2"
+  local json
+  json="$(mktemp)"
+  printf '%s\n' "${report}" >"${json}"
+  if ! trivy convert --quiet --format sarif --output "${out}" "${json}"; then
+    rm -f "${json}"
+    return 1
+  fi
+  rm -f "${json}"
+}
+
 main() {
   local image="${1:-}"
   local report blocking finding
@@ -116,6 +139,10 @@ main() {
     done <<<"${blocking}"
   fi
   print_report "${image}" "${report}" "${gate}"
+  if [[ -n "${SCAN_SARIF:-}" ]]; then
+    write_sarif "${report}" "${SCAN_SARIF}" \
+      || log::fatal "could not write SARIF to ${SCAN_SARIF}"
+  fi
   return "${gate}"
 }
 
