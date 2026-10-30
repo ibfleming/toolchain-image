@@ -5,7 +5,7 @@
 
 [tools]
 # --- infrastructure as code + kubernetes
-"aqua:opentofu/opentofu" = "1.13.5"
+"aqua:opentofu/opentofu" = "1.13.2"
 "aqua:kubernetes/kubernetes/kubectl" = "1.37.2"
 "aqua:helm/helm" = "4.3.1"
 
