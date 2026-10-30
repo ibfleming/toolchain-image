@@ -1,0 +1,35 @@
+name: Tool request
+description: Add, upgrade or remove a tool in the ci or dev image.
+labels: [enhancement]
+body:
+  - type: input
+    id: tool
+    attributes:
+      label: Tool
+      description: Name and project URL.
+    validations:
+      required: true
+  - type: dropdown
+    id: image
+    attributes:
+      label: Image
+      description: ci gets tools pipelines need; dev only adds conveniences on top (it never replaces a ci tool).
+      options:
+        - ci (and so dev)
+        - dev only
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: What it's for, and why it belongs in the image rather than in a project's own setup.
+    validations:
+      required: true
+  - type: input
+    id: install
+    attributes:
+      label: Install source
+      description: >-
+        mise registry entry (`mise registry <tool>`), or where verifiable release binaries come from.
+        Every download must be checksum- or signature-verified.

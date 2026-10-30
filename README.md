@@ -174,7 +174,8 @@ gh attestation verify template.tar.gz --bundle v<version>.intoto.jsonl \
    take the next version from the commits since the last tag: a `feat` bumps minor, a breaking
    change bumps major (minor below 1.0.0), and anything else bumps patch, including a rebuild
    with no changes.
-5. If your images are private, consumers need `docker login ghcr.io` with a token that has
+5. Replace the owner in `.github/CODEOWNERS` and in the README's Scorecard badge with yours.
+6. If your images are private, consumers need `docker login ghcr.io` with a token that has
    `read:packages`.
 
 Tools, theme, Claude Code policy and base image are all yours to change. See
@@ -235,6 +236,8 @@ gate, before it's promoted:
 
 ## Contributing
 
+See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for the inner loop and common changes. In short:
+
 - **Commits and PR titles** follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/).
   PRs are squash-merged, so the PR title becomes the commit on `main`.
 - **Formatting:** spaces only (the Makefile included), 120 columns, LF line endings. Markdown is
@@ -243,6 +246,9 @@ gate, before it's promoted:
 - **Before you push:** `make lint test`. CI runs the same targets.
 
 ## Security notes
+
+Report vulnerabilities privately: see [SECURITY.md](.github/SECURITY.md) for how, what's in scope and
+which versions are supported.
 
 - The `dev` image's Claude Code policy (deny reading credentials and `.env` files, no
   bypass-permissions mode) is a default, not a boundary: `vscode` has sudo. See

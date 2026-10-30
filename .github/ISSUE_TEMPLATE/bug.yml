@@ -1,0 +1,39 @@
+name: Bug
+description: Something in an image, the template or a release doesn't work as documented.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: Commands, a devcontainer.json or a workflow snippet.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: release
+    attributes:
+      label: Image and version
+      description: >-
+        `cat /etc/toolchain/release` in a dev container, or the image reference with its digest
+        (`ghcr.io/<owner>/toolchain/ci@sha256:...`).
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: status
+    attributes:
+      label: dev-status output (dev containers)
+      description: Run `dev-status` in the container. Leave empty for the ci image.
+      render: text
+  - type: input
+    id: host
+    attributes:
+      label: Host
+      description: OS, Docker version, and VS Code or devcontainer CLI version.

@@ -16,7 +16,7 @@ one obvious home.
 ├── tests/                        image and template tests
 ├── docs/                         documentation and design records
 ├── .config/                      repository tool configuration (mise, cspell, commitlint, git-cliff, hadolint, jactionlint)
-├── .github/                      workflows and Renovate
+├── .github/                      workflows, Renovate, community files (security policy, contributing, templates)
 └── .claude/                      instructions for Claude Code
 ```
 
@@ -31,7 +31,7 @@ one obvious home.
 | A script that builds, releases, scans or checks the repository | `scripts/`                                  |
 | A test                                                         | `tests/`                                    |
 | Configuration for a repository tool                            | `.config/`, if the tool finds it there      |
-| A workflow or Renovate setting                                 | `.github/`                                  |
+| A workflow, Renovate setting or community file                 | `.github/`                                  |
 
 The Dockerfile copies only from `config/`, `image/` and `toolchain/` (`.dockerignore` keeps
 everything else out of the build). A file the image needs must live in one of those.
