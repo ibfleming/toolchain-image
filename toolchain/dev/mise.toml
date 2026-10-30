@@ -6,7 +6,7 @@
 # --- git
 "aqua:jesseduffield/lazygit" = "0.66.2"
 "aqua:jesseduffield/lazydocker" = "0.25.2"
-"aqua:cli/cli" = "2.102.0"
+"aqua:cli/cli" = "2.103.3"
 
 # --- docker CLI plugins (the CLI itself comes from Docker's signed apt repo, see the Dockerfile)
 "aqua:docker/buildx" = "0.38.0"
