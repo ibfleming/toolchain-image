@@ -3,14 +3,15 @@
 lockfile_version = 3
 
 [[tools."aqua:Kitware/CMake"]]
-version = "4.4.4"
+version = "4.4.5"
 backend = "aqua:Kitware/CMake"
-specifiers = ["4.4.4"]
+specifiers = ["4.4.5"]
 
 [tools."aqua:Kitware/CMake"."platforms.linux-x64"]
-checksum = "sha256:e5bb807f7728cb60cd8b27ebc97a2edb469b68655f21e844a600c3575b76f5bb"
-url = "https://github.com/Kitware/CMake/releases/download/v4.4.4/cmake-4.4.4-linux-x86_64.tar.gz"
-url_api = "https://api.github.com/repos/Kitware/CMake/releases/assets/605992585"
+checksum = "sha256:ed85135c5a5135b45e50423cb406dea04ca3338da0b8ef3c9ede963559680be0"
+checksum_source = "mise-versions"
+url = "https://github.com/Kitware/CMake/releases/download/v4.4.5/cmake-4.4.5-linux-x86_64.tar.gz"
+url_api = "https://api.github.com/repos/Kitware/CMake/releases/assets/682699189"
 
 [[tools."aqua:astral-sh/ruff"]]
 version = "0.17.1"

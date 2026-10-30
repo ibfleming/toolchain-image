@@ -19,7 +19,7 @@ python = "3.15.0"
 go = "1.27.2"
 
 # --- c/c++ (compilers come from apt: build-essential, clang; see Dockerfile)
-"aqua:Kitware/CMake" = "4.4.4"
+"aqua:Kitware/CMake" = "4.4.5"
 "aqua:ninja-build/ninja" = "1.13.2"
 
 # --- node
