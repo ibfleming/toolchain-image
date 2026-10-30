@@ -9,7 +9,8 @@ pin images by digest: move to the newest release's digest to get fixes.
 ## Reporting a vulnerability
 
 Please report privately through this repository's **Security** tab → **Report a vulnerability**
-(GitHub private vulnerability reporting). Don't open a public issue for a vulnerability.
+([GitHub private vulnerability reporting](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability)).
+Don't open a public issue for a vulnerability.
 
 Include what is affected (image and version or digest, from `/etc/toolchain/release` in the
 container), how to reproduce it, and the impact you expect. You'll get an acknowledgement within a
