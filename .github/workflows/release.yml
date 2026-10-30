@@ -35,6 +35,8 @@ jobs:
       contents: write # tag (scheduled runs) + GitHub Release
       packages: write # push staging/release images, registry cache
       id-token: write # keyless signing (Sigstore, GitHub OIDC)
+      attestations: write # build provenance of the release assets
+      security-events: write # vulnerability findings to code scanning (Security tab)
     env:
       REGISTRY: ghcr.io/${{ github.repository_owner }}/toolchain
       CACHE_REF: ghcr.io/${{ github.repository_owner }}/toolchain/buildcache
@@ -109,15 +111,32 @@ jobs:
       - name: Vulnerability gate
         run: |
           # Scan the pulled release digests by their real references (labels in the report).
-          # Every image is scanned; the step fails if any of them fails the gate.
+          # Every image is scanned; the step fails if any of them fails the gate. The same findings
+          # go to sarif/<image>.sarif for code scanning.
           set -o pipefail
+          mkdir -p sarif
           (
             rc=0
-            for ref in "$REGISTRY/staging/ci@$CI_DIGEST" "$REGISTRY/staging/dev@$DEV_DIGEST"; do
-              scripts/scan.sh "$ref" || rc=1
-            done
+            SCAN_SARIF=sarif/ci.sarif scripts/scan.sh "$REGISTRY/staging/ci@$CI_DIGEST" || rc=1
+            SCAN_SARIF=sarif/dev.sarif scripts/scan.sh "$REGISTRY/staging/dev@$DEV_DIGEST" || rc=1
             exit "$rc"
           ) | tee scan.md
+
+      # Code scanning tracks the default branch, so only runs on main (weekly and manual releases)
+      # upload; a tag push releases a commit those runs also scan. Uploaded even when the gate
+      # fails, so the blocking findings show up in the Security tab.
+      - name: Vulnerability findings to code scanning (ci)
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' && hashFiles('sarif/ci.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          sarif_file: sarif/ci.sarif
+          category: trivy-ci
+      - name: Vulnerability findings to code scanning (dev)
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' && hashFiles('sarif/dev.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          sarif_file: sarif/dev.sarif
+          category: trivy-dev
 
       - name: Promote by digest copy
         env:
@@ -159,7 +178,7 @@ jobs:
           git -c "http.${GITHUB_SERVER_URL}/.extraheader=AUTHORIZATION: basic ${auth}" \
             push origin "$TAG"
 
-      - name: GitHub Release
+      - name: Release notes and assets
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.tag }}
@@ -177,5 +196,24 @@ jobs:
           cat notes.md >> "$GITHUB_STEP_SUMMARY"
           # The consumer template with this release's dev image filled in.
           scripts/render_template.sh "$REGISTRY/dev:$VERSION@$DEV_DIGEST" template.tar.gz
-          gh release create "$TAG" CHANGELOG.md template.tar.gz --title "$TAG" --notes-file notes.md \
-            --verify-tag
+
+      # Signed SLSA build provenance for the release assets (the images carry their own, from
+      # BuildKit). Attached as <tag>.intoto.jsonl, the name OpenSSF Scorecard's Signed-Releases
+      # check looks for; `gh attestation verify --bundle` checks it (README: Verify an image).
+      - name: Provenance for the release assets
+        id: provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            template.tar.gz
+            CHANGELOG.md
+
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+        run: |
+          cp "$BUNDLE" "$TAG.intoto.jsonl"
+          gh release create "$TAG" CHANGELOG.md template.tar.gz "$TAG.intoto.jsonl" --title "$TAG" \
+            --notes-file notes.md --verify-tag

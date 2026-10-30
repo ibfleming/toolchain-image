@@ -43,6 +43,7 @@ print_images() {
   local dev="${REGISTRY}/dev@${DEV_DIGEST}"
   local floating="\`${VERSION%.*}\` and \`${VERSION%%.*}\`"
   local inspect="docker buildx imagetools inspect ${dev}"
+  local repo="${GITHUB_REPOSITORY:-<owner>/<repo>}"
   cat <<EOF
 ## Images
 
@@ -59,7 +60,7 @@ Floating tags ${floating} also point here. Consumers pin the digest.
 image filled in:
 
 \`\`\`sh
-gh release download v${VERSION} --repo ${GITHUB_REPOSITORY:-<owner>/<repo>} \\
+gh release download v${VERSION} --repo ${repo} \\
   --pattern template.tar.gz --output - | tar -xz
 ./dev.sh
 \`\`\`
@@ -74,6 +75,15 @@ cosign verify ${dev} \\
 
 SBOM and provenance (\`mode=max\`) are attached to each image index:
 \`${inspect} --format '{{json .Provenance}}'\`
+
+The release assets (\`template.tar.gz\`, \`CHANGELOG.md\`) have signed build
+provenance, attached as \`v${VERSION}.intoto.jsonl\`:
+
+\`\`\`sh
+gh attestation verify template.tar.gz --bundle v${VERSION}.intoto.jsonl \\
+  --repo ${repo} \\
+  --signer-workflow ${repo}/.github/workflows/release.yml
+\`\`\`
 
 EOF
 }
