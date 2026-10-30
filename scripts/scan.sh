@@ -11,7 +11,11 @@
 #           language packages (Go binaries like k9s, npm's own deps,
 #           CPython's bundled wheels): only upstream releases fix these, so
 #           they are listed (Markdown on STDOUT) and tracked through Renovate
-#           version bumps rather than buried in an ignore file.
+#           version bumps.
+#   EXCEPT  a blocking finding that only upstream can fix, and that no
+#           release fixes yet, can be suppressed until a date in
+#           .config/trivyignore.yaml (exact binary, reason, expiry). The
+#           report still lists it; after the date it blocks again.
 #
 # Usage: scan.sh <image ref>
 # STDOUT is the Markdown report; exit status 1 means the gate failed.
@@ -27,6 +31,13 @@ readonly JQ_BLOCKING='
     | "\(.Severity)\t\(.VulnerabilityID)\t\(.PkgName)"
       + " \(.InstalledVersion) -> \(.FixedVersion)\t\($t)"]
   | unique | .[]'
+# Findings suppressed by the exceptions file, as a Markdown list.
+# shellcheck disable=SC2016 # jq variables, not shell ones
+readonly JQ_SUPPRESSED='
+  [.Results[]? | .Target as $t | .ExperimentalModifiedFindings[]?
+    | "- `\(.Finding.VulnerabilityID)` (\(.Finding.Severity)) in `"
+      + ($t | sub("^opt/mise/installs/"; "")) + "`: \(.Statement)"]
+  | unique | .[]'
 # Findings per component, as a Markdown table.
 # shellcheck disable=SC2016 # jq variables, not shell ones
 readonly JQ_TABLE='
@@ -41,13 +52,17 @@ readonly JQ_TABLE='
           | "| `\($name)` | \($high) | \($crit) |"))
       | join("\n") end'
 
+REPO_DIR="$(cd "${BASH_SOURCE[0]%/*}/.." && pwd)"
+readonly REPO_DIR
+readonly IGNORE_FILE="${REPO_DIR}/.config/trivyignore.yaml"
+
 # shellcheck source=image/lib/log.sh
-source "${BASH_SOURCE[0]%/*}/../image/lib/log.sh"
+source "${REPO_DIR}/image/lib/log.sh"
 
 #######################################
 # Print the Markdown report for one image.
 # Globals:
-#   JQ_TABLE
+#   JQ_TABLE, JQ_SUPPRESSED
 # Arguments:
 #   Image ref.
 #   Trivy's JSON report.
@@ -59,6 +74,7 @@ print_report() {
   local image="$1"
   local report="$2"
   local -i gate="$3"
+  local suppressed
   echo "#### \`${image}\`"
   echo
   if ((gate == 0)); then
@@ -70,6 +86,13 @@ print_report() {
   echo
   jq -r "${JQ_TABLE}" <<<"${report}"
   echo
+  suppressed="$(jq -r "${JQ_SUPPRESSED}" <<<"${report}")"
+  if [[ -n "${suppressed}" ]]; then
+    echo "Suppressed until their expiry (\`.config/trivyignore.yaml\`):"
+    echo
+    echo "${suppressed}"
+    echo
+  fi
 }
 
 main() {
@@ -82,7 +105,8 @@ main() {
   # One Trivy pass per image (each pass exports the whole image, ~2 GB);
   # the gate is computed from its JSON, so policy and report always agree.
   report="$(trivy image --quiet --scanners vuln --ignore-unfixed \
-    --severity HIGH,CRITICAL --format json "${image}")"
+    --severity HIGH,CRITICAL --ignorefile "${IGNORE_FILE}" \
+    --show-suppressed --format json "${image}")"
   blocking="$(jq -r "${JQ_BLOCKING}" <<<"${report}")"
   if [[ -n "${blocking}" ]]; then
     gate=1
