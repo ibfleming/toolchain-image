@@ -16,9 +16,9 @@
       "semanticCommitScope": "toolchain"
     },
     {
-      "description": "Repo lint/test tooling (root mise.toml): chore(deps)",
+      "description": "Repo lint/test tooling (.config/mise.toml): chore(deps)",
       "matchManagers": ["mise"],
-      "matchFileNames": ["mise.toml"],
+      "matchFileNames": [".config/mise.toml"],
       "semanticCommitType": "chore",
       "semanticCommitScope": "deps"
     },
@@ -35,16 +35,26 @@
       "semanticCommitScope": "actions"
     },
     {
+      "description": "Every update in one weekly PR, titled build(deps) (a release counts it as a patch). Python minor and major bumps stay separate: the rules below take them out of the group",
+      "matchPackageNames": ["*"],
+      "groupName": "all dependencies",
+      "groupSlug": "all",
+      "semanticCommitType": "build",
+      "semanticCommitScope": "deps"
+    },
+    {
       "description": "Python stays one minor behind the newest release: minor bumps need dashboard approval",
       "matchManagers": ["mise"],
       "matchDepNames": ["python"],
       "matchUpdateTypes": ["minor"],
-      "dependencyDashboardApproval": true
+      "dependencyDashboardApproval": true,
+      "groupName": null
     },
     {
       "description": "Major bumps change the image contract (semver major): approve explicitly",
       "matchUpdateTypes": ["major"],
-      "dependencyDashboardApproval": true
+      "dependencyDashboardApproval": true,
+      "groupName": null
     }
   ],
   "customManagers": [

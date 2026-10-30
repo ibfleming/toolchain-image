@@ -150,8 +150,9 @@ releases are signed by the workflow on `main`, so their identity ends in
    (linted as Conventional Commits) and the branch's **commit messages** as the body (keeps PR
    descriptions, such as Renovate's update tables, out of `main`'s history).
 3. Install the [Renovate](https://github.com/apps/renovate) GitHub App in a mode that opens pull
-   requests. Updates arrive weekly in UTC; set `timezone` in `.github/renovate.json` if you want a local
-   schedule.
+   requests. Updates arrive weekly in UTC, together in one pull request (Python minor and major
+   bumps wait for approval on the Dependency Dashboard, then come separately); set `timezone` in
+   `.github/renovate.json` if you want a local schedule.
 4. Push a `v0.1.0` tag to cut the first release. After that, releases happen on every `vX.Y.Z`
    tag, on demand (`workflow_dispatch` on `main`), and weekly. Weekly and on-demand releases
    take the next version from the commits since the last tag: a `feat` bumps minor, a breaking
