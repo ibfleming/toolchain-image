@@ -3,6 +3,14 @@
   toolchain-image
 </h1>
 
+<!-- Workflow badges use repository-relative paths, so they follow forks. Scorecard has no relative form: forks replace its owner. -->
+
+[![CI](../../actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
+[![Release](../../actions/workflows/release.yml/badge.svg)](../../actions/workflows/release.yml)
+[![CodeQL](../../actions/workflows/codeql.yml/badge.svg)](../../actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/ibfleming/toolchain-image/badge)](https://scorecard.dev/viewer/?uri=github.com/ibfleming/toolchain-image)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+
 One versioned toolchain, two images: **`ci`** for pipelines and **`dev`** for
 [Dev Containers](https://containers.dev). Both come from a single Dockerfile and a single pinned
 tool manifest, so "it works in my dev container" means "it works in CI".
@@ -189,6 +197,19 @@ every lint, test and release tool at the pinned versions from [`.config/mise.tom
 | `make check-commits` / `make check-pr-title` | Lint commit messages / a PR title (commitlint)                                                                                                                                            |
 | `make changelog`                             | Write `CHANGELOG.md` from the commit history (git-cliff)                                                                                                                                  |
 | `make screenshots`                           | Re-render the README's `welcome` screenshots (`FONT=<Nerd Font Mono .ttf>`)                                                                                                               |
+
+### Automation
+
+| Workflow                                     | Runs on                                             | What it does                                                                                                                                                              |
+| -------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [CI](.github/workflows/ci.yml)               | Pull requests, pushes to `main`                     | `make lint` (including a security audit of the workflows), commit messages, build both images, `make test`, spelling, the vulnerability gate. The same targets as locally |
+| [PR Title](.github/workflows/pr-title.yml)   | Pull requests (opened, edited, pushed)              | The title is the squash commit, so it must be a Conventional Commit                                                                                                       |
+| [Release](.github/workflows/release.yml)     | `vX.Y.Z` tags, weekly, manual                       | Build, test the pushed digests, gate, promote by digest, sign, attach provenance, publish the GitHub Release; findings go to code scanning                                |
+| [CodeQL](.github/workflows/codeql.yml)       | Pull requests, pushes to `main`, weekly             | Static analysis of the workflows and scripts, to code scanning                                                                                                            |
+| [Scorecard](.github/workflows/scorecard.yml) | Pushes to `main`, weekly, branch protection changes | OpenSSF Scorecard: publishes the score for the badge, findings to code scanning                                                                                           |
+| Renovate (GitHub App)                        | Weekly                                              | One grouped pull request with every dependency update (`.github/renovate.json`)                                                                                           |
+
+Every job runs StepSecurity Harden-Runner, which records the runner's network egress (audit mode).
 
 To add a tool: edit `toolchain/mise.toml` (or `toolchain/dev/mise.toml` for dev-only tools, or
 `toolchain/shell/mise.toml` for tools the shell config uses), run

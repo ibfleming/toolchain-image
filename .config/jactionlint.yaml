@@ -18,3 +18,12 @@ rules:
       - jdx/*
       - ossf/*
       - step-security/*
+
+ignores:
+  - rule: unpinnable-action
+    uses: ossf/scorecard-action
+    file: .github/workflows/scorecard.yml
+    reason: >-
+      It runs its Docker image by tag (ghcr.io/ossf/scorecard-action:vX). A fork pinning the digest
+      would fail the Scorecard API's approved-actions check for published results. The job holds no
+      secrets; its token can only write code scanning results and mint the OIDC token for publishing.
