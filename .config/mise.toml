@@ -12,7 +12,7 @@ taplo = "0.10.0"
 trivy = "0.76.1"
 cosign = "3.1.4"
 # prettier runs on node; same node version as the image toolchain.
-node = "24.22.2"
+node = "26.13.0"
 # Changelog + release notes from Conventional Commits (`make changelog`, release workflow).
 git-cliff = "2.14.2"
 # Conventional Commits 1.0.0 linting (`make check-commits`, PR titles in CI).

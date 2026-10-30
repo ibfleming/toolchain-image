@@ -23,7 +23,7 @@ go = "1.27.3"
 
 # --- node
 # Active LTS line (24). Node 26 enters LTS late Oct 2026; move then.
-node = "24.22.2"
+node = "26.13.0"
 
 [settings]
 lockfile = true
