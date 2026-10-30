@@ -1,7 +1,7 @@
 # Release: build once, test the exact pushed digests, gate, promote by digest copy, sign,
 # verify, publish a GitHub Release. Runs on a vX.Y.Z tag, weekly (patch rebuild picks up
 # Debian security updates), or manually. See docs/design/image-family-and-supply-chain.md §5-6.
-name: release
+name: Release
 
 on:
   push:
@@ -27,7 +27,10 @@ concurrency:
 
 jobs:
   release:
+    name: Build, Test, Sign and Publish
     runs-on: ubuntu-26.04
+    # Longest run on record ~12 min; a base-digest bump rebuilds everything cold.
+    timeout-minutes: 60
     permissions:
       contents: write # tag (scheduled runs) + GitHub Release
       packages: write # push staging/release images, registry cache
@@ -37,13 +40,21 @@ jobs:
       CACHE_REF: ghcr.io/${{ github.repository_owner }}/toolchain/buildcache
       CACHE_TO: "1"
     steps:
+      - name: Harden the runner (egress audit)
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with:
+          egress-policy: audit
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # tags, for versioning
           # The write token stays out of .git/config while the build and tests run; only the tag
           # push below gets it.
           persist-credentials: false
+      # No tool cache in a publishing workflow: a poisoned cache entry (written by any run that can
+      # write caches) would otherwise reach the signed release. Costs about a minute of installs.
       - uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        with:
+          cache: false
       - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ghcr.io
@@ -75,8 +86,9 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           make builder
-          export SOURCE_DATE_EPOCH="$(git log -1 --pretty=%ct)"
-          export APT_REFRESH="${{ github.run_id }}-${{ github.run_attempt }}" # current Debian packages
+          SOURCE_DATE_EPOCH="$(git log -1 --pretty=%ct)"
+          export SOURCE_DATE_EPOCH
+          export APT_REFRESH="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" # current Debian packages
           docker buildx bake --builder toolchain --push --metadata-file bake-meta.json ci dev
           ci="$(jq -er '.ci["containerimage.digest"]' bake-meta.json)"
           dev="$(jq -er '.dev["containerimage.digest"]' bake-meta.json)"
@@ -136,7 +148,7 @@ jobs:
           done
 
       - name: Tag scheduled/manual release
-        if: steps.version.outputs.new_tag == 'true'
+        if: ${{ steps.version.outputs.new_tag == 'true' }}
         env:
           TAG: ${{ steps.version.outputs.tag }}
           GH_TOKEN: ${{ github.token }}

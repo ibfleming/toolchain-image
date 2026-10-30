@@ -48,6 +48,7 @@ lint: ## Check formatting + lint on every file (CI gate; `make fmt` fixes most o
   prettier --check --log-level warn .
   markdownlint-cli2
   hadolint --config .config/hadolint.yaml Dockerfile
+  jactionlint --config-file .config/jactionlint.yaml --strict-exit
 
 fmt: ## Apply formatters in place (shfmt, taplo, prettier, markdownlint fixes); policy from .editorconfig
   shfmt --write $(SH_SCRIPTS) $(ZSH_FILES)

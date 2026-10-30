@@ -60,6 +60,7 @@ words:
   - hrel
   - httproutes
   - ignorefile
+  - jactionlint
   - jesseduffield
   - jsonencode
   - junegunn
@@ -84,6 +85,7 @@ words:
   - NOPASSWD
   - noutf
   - opencontainers
+  - ossf
   - passwordless
   - pids
   - pipefail
@@ -119,6 +121,7 @@ words:
   - zcompdump
   - zdiff
   - zensh
+  - zizmor
   - zstd
   - npmjs
   - dnsutils

@@ -1,12 +1,13 @@
 # CI gate for every push to main and every PR: formatting/lint and Conventional Commits on
 # pushed commits (PR titles are checked by pr-title.yml), then build both images and run the
 # full test suite, spelling and the vulnerability gate. Same `make` targets as on a laptop.
-name: ci
+name: CI
 
 on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch: # re-run main without an empty commit
 
 permissions:
   contents: read
@@ -27,23 +28,37 @@ concurrency:
 
 jobs:
   lint:
+    name: Lint
     runs-on: ubuntu-26.04
+    timeout-minutes: 10
     steps:
+      - name: Harden the runner (egress audit)
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with:
+          egress-policy: audit
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
       - uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+      # Online jactionlint rules (impostor commits, version comments vs. pinned SHAs, known-vulnerable
+      # actions) need the GitHub API; a local `make lint` stays offline.
       - name: Formatting and lint
+        env:
+          JACTIONLINT_ONLINE: "1"
+          GITHUB_TOKEN: ${{ github.token }}
         run: make lint
       - name: Conventional Commits (pushed commits)
-        if: github.event_name == 'push'
+        if: ${{ github.event_name == 'push' }}
         env:
           COMMITS_FROM: ${{ github.event.before }}
         run: make check-commits
 
   build-test:
+    name: Build and Test
     runs-on: ubuntu-26.04
+    # Longest run on record ~8 min with the release's build cache; a base-digest bump rebuilds cold.
+    timeout-minutes: 45
     permissions:
       actions: read # find the last release run, whose build cache CI reuses
       contents: read
@@ -52,6 +67,10 @@ jobs:
       REGISTRY: ghcr.io/${{ github.repository_owner }}/toolchain
       CACHE_REF: ghcr.io/${{ github.repository_owner }}/toolchain/buildcache
     steps:
+      - name: Harden the runner (egress audit)
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with:
+          egress-policy: audit
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -97,5 +116,5 @@ jobs:
       - name: Vulnerability gate
         run: make scan SCAN_IMGS=toolchain/dev:local >> "$GITHUB_STEP_SUMMARY"
       - name: Disk use
-        if: always()
+        if: ${{ always() }}
         run: df -h /

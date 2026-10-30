@@ -7,6 +7,8 @@ container-structure-test = "1.22.1"
 editorconfig-checker = "4.0.2"
 shfmt = "3.14.1"
 shellcheck = "0.11.0"
+# GitHub Actions lint + security audit (actionlint checks plus zizmor-equivalent rules).
+jactionlint = "2.4.0"
 taplo = "0.10.0"
 # release pipeline: vulnerability gate + keyless signing (also usable locally: make scan)
 trivy = "0.76.1"
