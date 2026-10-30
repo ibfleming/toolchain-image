@@ -9,15 +9,15 @@ shfmt = "3.14.1"
 shellcheck = "0.11.0"
 taplo = "0.10.0"
 # release pipeline: vulnerability gate + keyless signing (also usable locally: make scan)
-trivy = "0.76.0"
-cosign = "3.1.3"
+trivy = "0.76.1"
+cosign = "3.1.4"
 # prettier runs on node; same node version as the image toolchain.
-node = "24.22.0"
+node = "24.22.2"
 # Changelog + release notes from Conventional Commits (`make changelog`, release workflow).
 git-cliff = "2.14.2"
 # Conventional Commits 1.0.0 linting (`make check-commits`, PR titles in CI).
 "npm:@commitlint/cli" = "21.2.4"
 "npm:@commitlint/config-conventional" = "21.2.4"
 # Markdown lint (structure, lists, headings, tables); prettier formats, this checks.
-"npm:markdownlint-cli2" = "0.23.3"
+"npm:markdownlint-cli2" = "0.24.0"
 "npm:prettier" = "3.9.10"
