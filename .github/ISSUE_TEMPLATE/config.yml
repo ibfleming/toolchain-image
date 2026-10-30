@@ -1,0 +1,6 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a vulnerability
+    # editorconfig-checker-disable-next-line
+    url: https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability
+    about: Please report privately (Security tab → Report a vulnerability), not as an issue. See SECURITY.md.

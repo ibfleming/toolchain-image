@@ -17,7 +17,7 @@ Read first: [README.md](../README.md) (usage, development, releases), [docs/arch
 - The base image is pinned by multi-arch index digest. Every download is checksum- or signature-verified. No `curl | sh`.
 - Secrets only via `RUN --mount=type=secret`, never `ARG`/`ENV` (`mode=max` provenance publishes build args).
 - Nothing secret in the image label (`remoteEnv`/`containerEnv`): anyone who can pull the image can read it.
-- Project-neutral: no owner names, personal hosts, networks or machine paths in code or docs. The owner comes from CI (`github.repository_owner`, `SOURCE_URL`).
+- Project-neutral: no owner names, personal hosts, networks or machine paths in code or docs. The owner comes from CI (`github.repository_owner`, `SOURCE_URL`). Two deliberate exceptions, both repository metadata that forks replace (README "Running your own copy"): `.github/CODEOWNERS` and the README's OpenSSF Scorecard badge (no relative form; the workflow badges use relative `../../actions/...` paths and stay neutral).
 - Machine-written Claude Code state (`.claude.json`, credentials, `projects/`, history) never goes in git or into the image.
 
 ## Layout and commands
