@@ -59,6 +59,7 @@ words:
   - hostedtoolcache
   - hrel
   - httproutes
+  - ignorefile
   - jesseduffield
   - jsonencode
   - junegunn
