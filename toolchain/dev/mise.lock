@@ -55,14 +55,14 @@ url_api = "https://api.github.com/repos/docker/buildx/releases/assets/619849327"
 provenance = "cosign"
 
 [[tools."aqua:docker/compose"]]
-version = "5.6.0"
+version = "5.6.1"
 backend = "aqua:docker/compose"
-specifiers = ["5.6.0"]
+specifiers = ["5.6.1"]
 
 [tools."aqua:docker/compose"."platforms.linux-x64"]
-checksum = "sha256:40343e21ca777173e69cff5dbafeb37c6f81f3b0d57d9e597f036e95eb63e76a"
-url = "https://github.com/docker/compose/releases/download/v5.6.0/docker-compose-linux-x86_64"
-url_api = "https://api.github.com/repos/docker/compose/releases/assets/605922749"
+checksum = "sha256:47737f4236e6d3ccea7291995203f8f018058783b4c3a9469119811a0b5db8c0"
+url = "https://github.com/docker/compose/releases/download/v5.6.1/docker-compose-linux-x86_64"
+url_api = "https://api.github.com/repos/docker/compose/releases/assets/661714739"
 provenance = "cosign"
 
 [[tools."aqua:jesseduffield/lazydocker"]]
