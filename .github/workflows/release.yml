@@ -1,46 +1,65 @@
-# Release: build once, test the exact pushed digests, gate, promote by digest copy, sign,
-# verify, publish a GitHub Release. Runs on a vX.Y.Z tag, weekly (patch rebuild picks up
-# Debian security updates), or manually. See docs/design/image-family-and-supply-chain.md §5-6.
+# Release: build once per architecture, test the exact pushed digests, then promote them by tag.
+#
+#   prepare ─► bake ci ─► test ci (amd64, arm64) ─► bake dev (FROM ci@digest)
+#           ─► test dev (amd64, arm64; full suite, end to end) ─► promote, sign, publish
+#
+# Every push to main publishes `edge`. A manual run (bump: auto|patch|minor|major) or the weekly
+# rebuild (weekly-rebuild.yml, which calls this workflow) publishes X.Y.Z, X.Y and X, tags vX.Y.Z
+# and creates the GitHub Release. Nothing is rebuilt for promotion, and no consumer tag moves until
+# every gate has passed: until then a build carries only its build-<run id>-<attempt> tag.
+#
+# The images are built by docker/github-builder's bake workflow: one native runner per platform,
+# pushed by digest, with an SBOM and signed provenance. The file name is part of the signing
+# identity consumers verify (release.yml@refs/heads/main): don't rename it.
 name: Release
 
 on:
   push:
-    tags: ["v*.*.*"]
-  schedule:
-    # Mondays 12:23 UTC. Off the hour on purpose: GitHub delays scheduled runs under load, most
-    # at the top of the hour, and can drop them entirely (the first 12:00 UTC run never started).
-    - cron: "23 12 * * 1"
+    branches: [main]
   workflow_dispatch:
+    inputs:
+      bump:
+        description: Version bump (auto = from the Conventional Commits since the last release)
+        type: choice
+        options: [auto, patch, minor, major]
+        default: auto
+  workflow_call:
+    inputs:
+      bump:
+        description: Version bump (auto, patch, minor or major)
+        type: string
+        default: auto
 
 permissions: {}
 
-# Every run step in bash with -e and pipefail ("bash" makes GitHub add -o pipefail; the implicit
-# default doesn't), so a failure inside a pipe (e.g. `script | tee -a "$GITHUB_OUTPUT"`) fails the
-# step instead of being masked by the last command.
-defaults:
-  run:
-    shell: bash
-
+# One run at a time, never cancelled: tags and the GitHub Release must not interleave. A newer run
+# that is waiting replaces an older waiting one (for edge, only the newest commit matters); the
+# group is release.yml's own, never the caller's (weekly-rebuild.yml uses another).
 concurrency:
   group: release
   cancel-in-progress: false
 
+# bash with -e and pipefail ("bash" makes GitHub add -o pipefail; the implicit default doesn't).
+defaults:
+  run:
+    shell: bash
+
 jobs:
-  release:
-    name: Build, Test, Sign and Publish
+  prepare:
+    name: Prepare
     runs-on: ubuntu-26.04
-    # Longest run on record ~12 min; a base-digest bump rebuilds everything cold.
-    timeout-minutes: 60
+    timeout-minutes: 10
     permissions:
-      contents: write # tag (scheduled runs) + GitHub Release
-      packages: write # push staging/release images, registry cache
-      id-token: write # keyless signing (Sigstore, GitHub OIDC)
-      attestations: write # build provenance of the release assets
-      security-events: write # vulnerability findings to code scanning (Security tab)
-    env:
-      REGISTRY: ghcr.io/${{ github.repository_owner }}/toolchain
-      CACHE_REF: ghcr.io/${{ github.repository_owner }}/toolchain/buildcache
-      CACHE_TO: "1"
+      contents: read # tags and history, for the version
+    outputs:
+      channel: ${{ steps.version.outputs.channel }}
+      version: ${{ steps.version.outputs.build_version }}
+      release-version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      new-tag: ${{ steps.version.outputs.new_tag }}
+      previous-version: ${{ steps.previous.outputs.PREVIOUS_VERSION }}
+      previous-tools: ${{ steps.previous.outputs.PREVIOUS_TOOLS }}
+      source-date-epoch: ${{ steps.version.outputs.source_date_epoch }}
     steps:
       - name: Harden the Runner (Egress Audit)
         uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
@@ -50,11 +69,262 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # tags, for versioning
-          # The write token stays out of .git/config while the build and tests run; only the tag
-          # push below gets it.
           persist-credentials: false
       # No tool cache in a publishing workflow: a poisoned cache entry (written by any run that can
-      # write caches) would otherwise reach the signed release. Costs about a minute of installs.
+      # write caches) would otherwise reach the signed release.
+      - name: Install Tools (mise)
+        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        with:
+          cache: false
+      # A push to main builds `edge`: the next release's version plus the commit, e.g.
+      # 0.12.0-edge.1a2b3c4. A manual or weekly run builds the release itself.
+      - name: Version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }} # does the newest tag already have a release? (re-runs)
+          RELEASE_BUMP: ${{ inputs.bump || 'auto' }}
+          CHANNEL: ${{ github.event_name == 'push' && 'edge' || 'release' }}
+        run: |
+          scripts/release_version.sh > version.env
+          cat version.env >> "$GITHUB_OUTPUT"
+          version="$(sed -n 's/^version=//p' version.env)"
+          build_version="$version"
+          [[ $CHANNEL == edge ]] && build_version="${version}-edge.${GITHUB_SHA::7}"
+          {
+            echo "channel=$CHANNEL"
+            echo "build_version=$build_version"
+            echo "source_date_epoch=$(git log -1 --pretty=%ct)"
+          } | tee -a "$GITHUB_OUTPUT"
+      - name: Previous Release (What Changed, for the dev Image's Welcome)
+        id: previous
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: scripts/previous_tools.sh "$VERSION" | tee -a "$GITHUB_OUTPUT"
+
+  bake-ci:
+    name: Bake ci
+    needs: [prepare]
+    permissions:
+      contents: read
+      id-token: write # keyless signing of the provenance, signed GHA cache
+      packages: write # push ghcr.io/<owner>/toolchain/ci by digest
+    uses: docker/github-builder/.github/workflows/bake.yml@cbc9d42f8c89a55623392aadd03600965b80e963 # v1.18.1
+    with:
+      target: ci
+      output: image
+      push: true
+      sbom: true
+      cache: true
+      # APT_REFRESH: a new value per run rebuilds the apt layers, so every release (and edge) ships
+      # Debian's current packages instead of cached ones.
+      vars: |
+        PLATFORMS=linux/amd64,linux/arm64
+        VERSION=${{ needs.prepare.outputs.version }}
+        REVISION=${{ github.sha }}
+        SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
+        SOURCE_DATE_EPOCH=${{ needs.prepare.outputs.source-date-epoch }}
+        APT_REFRESH=${{ github.run_id }}-${{ github.run_attempt }}
+      meta-images: ghcr.io/${{ github.repository_owner }}/toolchain/ci
+      meta-tags: type=raw,value=build-${{ github.run_id }}-${{ github.run_attempt }}
+    secrets:
+      registry-auths: |
+        - registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      build-secrets: |
+        github_token: ${{ toJSON(secrets.GITHUB_TOKEN) }}
+
+  test-ci:
+    name: Test ci (${{ matrix.arch }})
+    needs: [bake-ci]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-26.04
+          - arch: arm64
+            runner: ubuntu-26.04-arm
+    permissions:
+      contents: read
+      packages: read # pull the pushed digest
+      security-events: write # vulnerability findings to code scanning
+    steps:
+      - name: Harden the Runner (Egress Audit)
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with:
+          egress-policy: audit
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Tools (mise)
+        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        with:
+          cache: false
+      - name: Log In to GHCR
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Disk Space (Images Are ~2 GB Each; Trivy Exports Them Again)
+        run: scripts/free_disk.sh 20
+      - name: Test, Size Report and Vulnerability Gate
+        uses: $/.github/actions/smoke-test
+        with:
+          ci-image: ghcr.io/${{ github.repository_owner }}/toolchain/ci@${{ needs.bake-ci.outputs.digest }}
+          scan: "true"
+          sarif-prefix: sarif/
+      # Uploaded even when the gate fails, so the blocking findings show up in the Security tab.
+      - name: Vulnerability Findings to Code Scanning
+        if: ${{ !cancelled() && hashFiles('sarif/ci.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          sarif_file: sarif/ci.sarif
+          category: trivy-ci-${{ matrix.arch }}
+      - name: Keep the Vulnerability Report (Release Notes)
+        if: ${{ matrix.arch == 'amd64' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: scan-ci
+          path: scan-ci.md
+          retention-days: 5
+          if-no-files-found: error
+
+  # dev on top of the exact ci digest that was just tested: the named context replaces the
+  # Dockerfile's ci stage, so ci isn't rebuilt here.
+  bake-dev:
+    name: Bake dev
+    needs: [prepare, bake-ci, test-ci]
+    permissions:
+      contents: read
+      id-token: write # keyless signing of the provenance, signed GHA cache
+      packages: write # pull ci, push ghcr.io/<owner>/toolchain/dev by digest
+    uses: docker/github-builder/.github/workflows/bake.yml@cbc9d42f8c89a55623392aadd03600965b80e963 # v1.18.1
+    with:
+      target: dev
+      output: image
+      push: true
+      sbom: true
+      cache: true
+      vars: |
+        PLATFORMS=linux/amd64,linux/arm64
+        VERSION=${{ needs.prepare.outputs.version }}
+        REVISION=${{ github.sha }}
+        SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
+        SOURCE_DATE_EPOCH=${{ needs.prepare.outputs.source-date-epoch }}
+        APT_REFRESH=${{ github.run_id }}-${{ github.run_attempt }}
+        PREVIOUS_VERSION=${{ needs.prepare.outputs.previous-version }}
+        PREVIOUS_TOOLS=${{ needs.prepare.outputs.previous-tools }}
+      set: | # editorconfig-checker-disable-next-line
+        dev.contexts.ci=docker-image://ghcr.io/${{ github.repository_owner }}/toolchain/ci@${{ needs.bake-ci.outputs.digest }}
+      meta-images: ghcr.io/${{ github.repository_owner }}/toolchain/dev
+      meta-tags: type=raw,value=build-${{ github.run_id }}-${{ github.run_attempt }}
+    secrets:
+      registry-auths: |
+        - registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      build-secrets: |
+        github_token: ${{ toJSON(secrets.GITHUB_TOKEN) }}
+
+  # The full suite, including the consumer template end to end, on both images per architecture.
+  test-dev:
+    name: Test dev (${{ matrix.arch }})
+    needs: [bake-ci, bake-dev]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-26.04
+          - arch: arm64
+            runner: ubuntu-26.04-arm
+    permissions:
+      contents: read
+      packages: read # pull the pushed digests
+      security-events: write # vulnerability findings to code scanning
+    steps:
+      - name: Harden the Runner (Egress Audit)
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with:
+          egress-policy: audit
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Tools (mise)
+        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        with:
+          cache: false
+      - name: Log In to GHCR
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Disk Space (Images Are ~2 GB Each; Trivy Exports Them Again)
+        run: scripts/free_disk.sh 20
+      - name: Test, Size Report and Vulnerability Gate
+        uses: $/.github/actions/smoke-test
+        with:
+          ci-image: ghcr.io/${{ github.repository_owner }}/toolchain/ci@${{ needs.bake-ci.outputs.digest }}
+          dev-image: ghcr.io/${{ github.repository_owner }}/toolchain/dev@${{ needs.bake-dev.outputs.digest }}
+          scan: "true"
+          sarif-prefix: sarif/
+      - name: Vulnerability Findings to Code Scanning
+        if: ${{ !cancelled() && hashFiles('sarif/dev.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          sarif_file: sarif/dev.sarif
+          category: trivy-dev-${{ matrix.arch }}
+      - name: Keep the Vulnerability Report (Release Notes)
+        if: ${{ matrix.arch == 'amd64' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: scan-dev
+          path: scan-dev.md
+          retention-days: 5
+          if-no-files-found: error
+
+  promote:
+    name: Promote, Sign and Publish
+    needs: [prepare, bake-ci, bake-dev, test-dev]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    environment: release
+    permissions:
+      contents: write # git tag + GitHub Release
+      packages: write # release tags on the tested digests
+      id-token: write # keyless signing (Sigstore, GitHub OIDC)
+      attestations: write # build provenance of the release assets
+    env:
+      REGISTRY: ghcr.io/${{ github.repository_owner }}/toolchain
+      CI_DIGEST: ${{ needs.bake-ci.outputs.digest }}
+      DEV_DIGEST: ${{ needs.bake-dev.outputs.digest }}
+      CHANNEL: ${{ needs.prepare.outputs.channel }}
+      VERSION: ${{ needs.prepare.outputs.release-version }}
+      TAG: ${{ needs.prepare.outputs.tag }}
+      # The signing identity. A called workflow signs as itself (release.yml), at the caller's ref,
+      # which is always main here; github.workflow_ref would name the caller instead.
+      IDENTITY: ${{ github.server_url }}/${{ github.repository }}/.github/workflows/release.yml@${{ github.ref }}
+    steps:
+      - name: Harden the Runner (Egress Audit)
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with:
+          egress-policy: audit
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # tags, for the changelog
+          # The write token stays out of .git/config; only the tag push below gets it.
+          persist-credentials: false
       - name: Install Tools (mise)
         uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
         with:
@@ -66,100 +336,40 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      # A release holds more than CI (its build cache until pushed, then both pulled images, then
-      # Trivy's exports), so it keeps the full cleanup's headroom.
-      - name: Disk Space (Images Are ~2 GB Each; Trivy Exports Them Again)
-        run: scripts/free_disk.sh 30
-
-      - name: Version
-        id: version
-        env:
-          GH_TOKEN: ${{ github.token }} # does the newest tag already have a release? (re-runs)
-        run: scripts/release_version.sh | tee -a "$GITHUB_OUTPUT"
-
-      - name: Previous Release (What Changed, for the dev Image's Welcome)
+      # edge only moves forward: a run queued behind a newer push to main leaves edge alone.
+      - name: Promote by Digest Copy
+        id: promote
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.version.outputs.version }}
-        run: scripts/previous_tools.sh "$VERSION" | tee -a "$GITHUB_ENV"
-
-      - name: Build and Push to Staging (SBOM + Provenance)
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-          REVISION: ${{ github.sha }}
-          SOURCE_URL: ${{ github.server_url }}/${{ github.repository }}
-          GITHUB_TOKEN: ${{ github.token }}
         run: |
-          make builder
-          SOURCE_DATE_EPOCH="$(git log -1 --pretty=%ct)"
-          export SOURCE_DATE_EPOCH
-          export APT_REFRESH="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" # current Debian packages
-          docker buildx bake --builder toolchain --push --metadata-file bake-meta.json ci dev
-          ci="$(jq -er '.ci["containerimage.digest"]' bake-meta.json)"
-          dev="$(jq -er '.dev["containerimage.digest"]' bake-meta.json)"
-          { echo "CI_DIGEST=$ci"; echo "DEV_DIGEST=$dev"; } >> "$GITHUB_ENV"
-          docker buildx prune --builder toolchain --all --force >/dev/null # pushed; drop local build cache
-
-      - name: Test the Pushed Digests
-        run: |
-          # Both at once; each pull's failure still fails the step.
-          docker pull -q "$REGISTRY/staging/ci@$CI_DIGEST" & ci_pull=$!
-          docker pull -q "$REGISTRY/staging/dev@$DEV_DIGEST" & dev_pull=$!
-          wait "$ci_pull"
-          wait "$dev_pull"
-          docker tag "$REGISTRY/staging/ci@$CI_DIGEST" toolchain/ci:local
-          docker tag "$REGISTRY/staging/dev@$DEV_DIGEST" toolchain/dev:local
-          make -j "$(nproc)" --output-sync=target test
-
-      - name: Vulnerability Gate
-        run: |
-          # Scan the pulled release digests by their real references (labels in the report).
-          # Every image is scanned; the step fails if any of them fails the gate. The same findings
-          # go to sarif/<image>.sarif for code scanning.
-          set -o pipefail
-          mkdir -p sarif
-          (
-            rc=0
-            SCAN_SARIF=sarif/ci.sarif scripts/scan.sh "$REGISTRY/staging/ci@$CI_DIGEST" || rc=1
-            SCAN_SARIF=sarif/dev.sarif scripts/scan.sh "$REGISTRY/staging/dev@$DEV_DIGEST" || rc=1
-            exit "$rc"
-          ) | tee scan.md
-
-      # Code scanning tracks the default branch, so only runs on main (weekly and manual releases)
-      # upload; a tag push releases a commit those runs also scan. Uploaded even when the gate
-      # fails, so the blocking findings show up in the Security tab.
-      - name: Vulnerability Findings to Code Scanning (ci)
-        if: ${{ !cancelled() && github.ref == 'refs/heads/main' && hashFiles('sarif/ci.sarif') != '' }}
-        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
-        with:
-          sarif_file: sarif/ci.sarif
-          category: trivy-ci
-      - name: Vulnerability Findings to Code Scanning (dev)
-        if: ${{ !cancelled() && github.ref == 'refs/heads/main' && hashFiles('sarif/dev.sarif') != '' }}
-        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
-        with:
-          sarif_file: sarif/dev.sarif
-          category: trivy-dev
-
-      - name: Promote by Digest Copy
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          minor="${VERSION%.*}" major="${VERSION%%.*}"
+          if [[ $CHANNEL == edge ]]; then
+            head="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" -q .sha)"
+            if [[ $head != "$GITHUB_SHA" ]]; then
+              echo "main is at ${head::7} now, not ${GITHUB_SHA::7}: edge stays where it is"
+              echo "skipped=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            tags=(edge)
+          else
+            tags=("$VERSION" "${VERSION%.*}" "${VERSION%%.*}")
+          fi
           for t in ci dev; do
             d="$CI_DIGEST"; [[ $t == dev ]] && d="$DEV_DIGEST"
-            docker buildx imagetools create \
-              -t "$REGISTRY/$t:$VERSION" -t "$REGISTRY/$t:$minor" -t "$REGISTRY/$t:$major" \
-              "$REGISTRY/staging/$t@$d"
-            # A single-source copy must preserve the digest (signatures/attestations follow it).
-            got="$(docker buildx imagetools inspect "$REGISTRY/$t:$VERSION" --format '{{json .Manifest}}' \
-              | jq -r .digest)"
-            [[ $got == "$d" ]] || { echo "digest changed on promote: $got != $d" >&2; exit 1; }
+            args=()
+            for tag in "${tags[@]}"; do args+=(-t "$REGISTRY/$t:$tag"); done
+            docker buildx imagetools create "${args[@]}" "$REGISTRY/$t@$d"
+            # A copy within the repository must keep the digest (signatures and attestations follow it).
+            for tag in "${tags[@]}"; do
+              got="$(docker buildx imagetools inspect "$REGISTRY/$t:$tag" --format '{{json .Manifest}}' \
+                | jq -r .digest)"
+              [[ $got == "$d" ]] || { echo "$t:$tag is $got, not $d" >&2; exit 1; }
+            done
+            echo "$t: ${tags[*]} -> $d"
           done
+          echo "skipped=false" >> "$GITHUB_OUTPUT"
 
       - name: Sign (Keyless) and Verify
-        env:
-          IDENTITY: https://github.com/${{ github.workflow_ref }}
+        if: ${{ steps.promote.outputs.skipped == 'false' }}
         run: |
           for ref in "$REGISTRY/ci@$CI_DIGEST" "$REGISTRY/dev@$DEV_DIGEST"; do
             cosign sign --yes "$ref"
@@ -169,10 +379,9 @@ jobs:
             echo "signed + verified: $ref"
           done
 
-      - name: Tag Scheduled/Manual Release
-        if: ${{ steps.version.outputs.new_tag == 'true' }}
+      - name: Tag the Release
+        if: ${{ env.CHANNEL == 'release' && needs.prepare.outputs.new-tag == 'true' }}
         env:
-          TAG: ${{ steps.version.outputs.tag }}
           GH_TOKEN: ${{ github.token }}
         run: |
           git tag "$TAG" "$GITHUB_SHA"
@@ -181,16 +390,24 @@ jobs:
           git -c "http.${GITHUB_SERVER_URL}/.extraheader=AUTHORIZATION: basic ${auth}" \
             push origin "$TAG"
 
+      - name: Download the Vulnerability Reports
+        if: ${{ env.CHANNEL == 'release' }}
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: scan-*
+          merge-multiple: true
+
       - name: Release Notes and Assets
+        if: ${{ env.CHANNEL == 'release' }}
         env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.version.outputs.tag }}
-          VERSION: ${{ steps.version.outputs.version }}
-          IDENTITY: https://github.com/${{ github.workflow_ref }}
+          PROVENANCE_VERIFY: |
+            ${{ needs.bake-ci.outputs.cosign-verify-commands }}
+            ${{ needs.bake-dev.outputs.cosign-verify-commands }}
         run: |
-          # This release's changes: from the previous tag to this one (it exists by now, pushed or
-          # created above). Not --latest: a weekly rebuild tags the same commit as the previous
-          # release, and git-cliff would then report everything since the release before that.
+          cat scan-ci.md scan-dev.md > scan.md
+          # This release's changes: from the previous tag to this one (it exists by now). Not
+          # --latest: a weekly rebuild tags the same commit as the previous release, and git-cliff
+          # would then report everything since the release before that.
           prev="$(git describe --tags --abbrev=0 --match 'v*.*.*' --exclude "$TAG" "$TAG" 2>/dev/null || true)"
           if [[ -n $prev ]]; then git-cliff "$prev..$TAG" --strip all > changes.md
           else git-cliff --latest --strip all > changes.md; fi
@@ -200,11 +417,11 @@ jobs:
           # The consumer template with this release's dev image filled in.
           scripts/render_template.sh "$REGISTRY/dev:$VERSION@$DEV_DIGEST" template.tar.gz
 
-      # Signed SLSA build provenance for the release assets (the images carry their own, from
-      # BuildKit). Attached as <tag>.intoto.jsonl, the name OpenSSF Scorecard's Signed-Releases
-      # check looks for; `gh attestation verify --bundle` checks it (README: Verify an image).
+      # Signed SLSA build provenance for the release assets (the images carry their own). Attached as
+      # <tag>.intoto.jsonl, the name OpenSSF Scorecard's Signed-Releases check looks for.
       - name: Provenance for the Release Assets
         id: provenance
+        if: ${{ env.CHANNEL == 'release' }}
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: |
@@ -212,9 +429,9 @@ jobs:
             CHANGELOG.md
 
       - name: GitHub Release
+        if: ${{ env.CHANNEL == 'release' }}
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.version.outputs.tag }}
           BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
         run: |
           cp "$BUNDLE" "$TAG.intoto.jsonl"

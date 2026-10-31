@@ -6,12 +6,14 @@
 #   tag=vX.Y.Z
 #   new_tag=true|false
 #
-# - A tag push (vX.Y.Z) releases that version; the tag already exists.
-# - A scheduled or manual run (main only) releases the next version after
-#   the highest vX.Y.Z tag, from the Conventional Commits since it: a
-#   breaking change bumps major (minor below 1.0.0), a `feat` minor, and
-#   anything else, or nothing (a rebuild with fresh OS packages), patch. The
-#   workflow creates the tag at the end, only if the run succeeds.
+# - A release (main only) is the next version after the highest vX.Y.Z tag
+#   (v0.1.0 when there is none),
+#   from the Conventional Commits since it: a breaking change bumps major
+#   (minor below 1.0.0), a `feat` minor, and anything else, or nothing (a
+#   rebuild with fresh OS packages), patch. RELEASE_BUMP=patch|minor|major
+#   overrides that (a manual release's input; `auto` or unset keeps it). The
+#   workflow creates the tag at the end, only if the run succeeds; tags are
+#   never pushed by hand.
 # - Except when an earlier run already pushed that tag but failed before
 #   publishing its GitHub Release (a re-run): if the highest tag points at
 #   this commit and has no GitHub Release, the run releases it again
@@ -46,7 +48,10 @@ latest_tag() {
 # Print the bump the commits since a tag call for: major, minor or patch.
 # Types come from commit titles only: a squash body lists the branch's
 # commits, which can include a `feat` line in what is overall a fix.
-# Breaking-change footers come from the bodies.
+# Breaking-change footers come from the bodies. RELEASE_BUMP, when set to
+# patch, minor or major, decides instead.
+# Globals:
+#   RELEASE_BUMP
 # Arguments:
 #   The tag to compare against.
 # Outputs:
@@ -79,6 +84,10 @@ pending_tag() {
 bump_since() {
   local since="$1"
   local subjects bodies
+  if [[ "${RELEASE_BUMP:-auto}" != "auto" ]]; then
+    echo "${RELEASE_BUMP}"
+    return 0
+  fi
   subjects="$(git log --format=%s "${since}..HEAD")"
   bodies="$(git log --format=%b "${since}..HEAD")"
   if grep -qE "${BREAKING_TITLE_RE}" <<<"${subjects}" \
@@ -94,23 +103,26 @@ bump_since() {
 #######################################
 # Print the next tag after the latest one, from the commits since it.
 # Outputs:
-#   The tag to STDOUT; the reasoning to STDERR.
-# Returns:
-#   0 on success; exits 1 when there is no vX.Y.Z tag yet.
+#   The tag to STDOUT (v0.1.0 when there is no vX.Y.Z tag yet); the
+#   reasoning to STDERR.
 #######################################
 next_tag() {
   local latest bump count tag
   local -i major minor patch
   latest="$(latest_tag)"
   if [[ -z "${latest}" ]]; then
-    log::fatal "no vX.Y.Z tag yet; push one (e.g. v0.1.0) first"
+    log::info "no vX.Y.Z tag yet: the first release is v0.1.0"
+    echo "v0.1.0"
+    return 0
   fi
   [[ "${latest}" =~ ${SEMVER_RE} ]]
   major="${BASH_REMATCH[1]}"
   minor="${BASH_REMATCH[2]}"
   patch="${BASH_REMATCH[3]}"
   bump="$(bump_since "${latest}")"
-  if [[ "${bump}" == "major" && "${major}" -eq 0 ]]; then
+  # Below 1.0.0, a breaking change is a minor bump; asking for major is 1.0.0.
+  if [[ "${bump}" == "major" && "${major}" -eq 0 &&
+    "${RELEASE_BUMP:-auto}" == "auto" ]]; then
     bump="minor"
   fi
   case "${bump}" in
@@ -126,27 +138,23 @@ next_tag() {
 
 main() {
   local tag new_tag
-  if [[ "${GITHUB_REF_TYPE:-}" == "tag" ]]; then
-    tag="${GITHUB_REF_NAME:?}"
-    if [[ ! "${tag}" =~ ${SEMVER_RE} ]]; then
-      log::fatal "tag '${tag}' is not vX.Y.Z"
-    fi
+  case "${RELEASE_BUMP:-auto}" in
+    auto | patch | minor | major) ;;
+    *) log::fatal "RELEASE_BUMP must be auto, patch, minor or major" ;;
+  esac
+  # A release is built from main, never a branch or a tag. (Unset outside
+  # Actions: a local dry run.)
+  if [[ "${GITHUB_REF:-refs/heads/main}" != "refs/heads/main" ]]; then
+    log::fatal "releases run from main, not ${GITHUB_REF}"
+  fi
+  tag="$(pending_tag)"
+  if [[ -n "${tag}" ]]; then
+    log::warn "${tag} is already tagged at this commit but has no GitHub" \
+      "Release (an earlier run failed after tagging): releasing it again"
     new_tag="false"
   else
-    # A scheduled or manual release is built from main, never a branch.
-    # (Unset outside Actions: a local dry run.)
-    if [[ "${GITHUB_REF:-refs/heads/main}" != "refs/heads/main" ]]; then
-      log::fatal "releases run from main or a vX.Y.Z tag, not ${GITHUB_REF}"
-    fi
-    tag="$(pending_tag)"
-    if [[ -n "${tag}" ]]; then
-      log::warn "${tag} is already tagged at this commit but has no GitHub" \
-        "Release (an earlier run failed after tagging): releasing it again"
-      new_tag="false"
-    else
-      tag="$(next_tag)"
-      new_tag="true"
-    fi
+    tag="$(next_tag)"
+    new_tag="true"
   fi
   printf 'version=%s\ntag=%s\nnew_tag=%s\n' "${tag#v}" "${tag}" "${new_tag}"
 }

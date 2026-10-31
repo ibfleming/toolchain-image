@@ -28,8 +28,9 @@ words:
   - appset
   - Artix
   - autostash
-  - buildcache
   - buildx
+  - chainctl
+  - chainguard
   - charliermarsh
   - chowns
   - ciss

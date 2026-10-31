@@ -1,0 +1,31 @@
+# Weekly rebuild: a release even when nothing changed, so the images pick up Debian's security
+# fixes (the release refreshes every apt layer). Calls release.yml, which signs as itself: the
+# identity consumers verify stays release.yml@refs/heads/main.
+name: Weekly Rebuild
+
+on:
+  schedule:
+    # Mondays 12:23 UTC. Off the hour on purpose: GitHub delays scheduled runs under load, most
+    # at the top of the hour, and can drop them entirely (the first 12:00 UTC run never started).
+    - cron: "23 12 * * 1"
+
+permissions: {}
+
+# Not "release": that's the called workflow's own group, and sharing it would cancel the call.
+concurrency:
+  group: weekly-rebuild-caller
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release
+    # Everything release.yml's jobs need; each of its jobs asks for its own subset.
+    permissions:
+      contents: write # git tag + GitHub Release
+      packages: write # push and tag the images
+      id-token: write # keyless signing (Sigstore, GitHub OIDC)
+      attestations: write # build provenance of the release assets
+      security-events: write # vulnerability findings to code scanning
+    uses: $/.github/workflows/release.yml
+    with:
+      bump: auto
