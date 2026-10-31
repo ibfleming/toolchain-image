@@ -1,6 +1,7 @@
 # CI gate for every push to main and every PR: formatting/lint and Conventional Commits on
 # pushed commits (PR titles are checked by pr-title.yml), then build both images and run the
-# full test suite, spelling and the vulnerability gate. Same `make` targets as on a laptop.
+# full test suite and the vulnerability gate on amd64 and arm64 (native runners), plus spelling.
+# Same `make` targets as on a laptop.
 name: CI
 
 on:
@@ -74,10 +75,21 @@ jobs:
           COMMITS_FROM: ${{ github.event.before }}
         run: make check-commits
 
+  # One job per architecture, each on a native runner (no emulation): both images are built and the
+  # full suite runs on amd64 and arm64.
   build-test:
-    name: Build and Test
-    runs-on: ubuntu-26.04
-    # Longest run on record ~8 min with the release's build cache; a base-digest bump rebuilds cold.
+    name: Build & Test (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-26.04
+          - arch: arm64
+            runner: ubuntu-26.04-arm
+    # Longest amd64 run on record ~8 min with the release's build cache; a base-digest bump rebuilds
+    # cold, and so does arm64 until releases push an arm64 build cache.
     timeout-minutes: 45
     permissions:
       actions: read # find the last release run, whose build cache CI reuses
@@ -130,6 +142,7 @@ jobs:
           make -j "$(nproc)" --output-sync=target test
           df -h /
       - name: Spelling
+        if: ${{ matrix.arch == 'amd64' }} # the same files on both
         run: make spell
       # dev is built FROM ci and only adds to it, so scanning dev covers ci's packages too.
       # Releases scan both.

@@ -37,7 +37,9 @@ variable "PREVIOUS_VERSION" { default = "" }
 variable "PREVIOUS_TOOLS" { default = "" }
 
 // --- Build behaviour -----------------------------------------------------------------------------
-variable "PLATFORMS" { default = "linux/amd64" }
+// Comma-separated, e.g. "linux/amd64,linux/arm64". Empty = the builder's native platform, so local
+// builds and CI's per-architecture jobs never run under emulation.
+variable "PLATFORMS" { default = "" }
 // A new value per release run (the release workflow passes its run ID): rebuilds the apt layers,
 // so each release ships Debian's current security fixes instead of cached packages. Empty = cache.
 variable "APT_REFRESH" { default = "" }
@@ -63,7 +65,7 @@ function "cache_to" {
 // GitHub downloads (never a build arg: mode=max provenance publishes build args), OCI labels.
 target "_common" {
   context   = "."
-  platforms = split(",", PLATFORMS)
+  platforms = PLATFORMS == "" ? null : split(",", PLATFORMS)
   args = {
     SOURCE_DATE_EPOCH = SOURCE_DATE_EPOCH
     VERSION           = VERSION

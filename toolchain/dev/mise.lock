@@ -7,6 +7,12 @@ version = "0.11.0"
 backend = "aqua:ahmetb/kubectx"
 specifiers = ["0.11.0"]
 
+[tools."aqua:ahmetb/kubectx"."platforms.linux-arm64"]
+checksum = "sha256:1dac2072216689e773325cb7587b858ea7415706ebcf04e23bf80e7e70555340"
+checksum_source = "mise-versions"
+url = "https://github.com/ahmetb/kubectx/releases/download/v0.11.0/kubectx_v0.11.0_linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/ahmetb/kubectx/releases/assets/382590945"
+
 [tools."aqua:ahmetb/kubectx"."platforms.linux-x64"]
 checksum = "sha256:08e031c54fbffb3f100e904e4eae94bba2730fedf4869921fda79e4d7a8f5d4c"
 url = "https://github.com/ahmetb/kubectx/releases/download/v0.11.0/kubectx_v0.11.0_linux_x86_64.tar.gz"
@@ -17,6 +23,12 @@ version = "0.11.0"
 backend = "aqua:ahmetb/kubectx/kubens"
 specifiers = ["0.11.0"]
 
+[tools."aqua:ahmetb/kubectx/kubens"."platforms.linux-arm64"]
+checksum = "sha256:37058abe82ef20c93b44f3dc8ca2382dbb95d416cec958fbf7b8f79f011be86c"
+checksum_source = "mise-versions"
+url = "https://github.com/ahmetb/kubectx/releases/download/v0.11.0/kubens_v0.11.0_linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/ahmetb/kubectx/releases/assets/382591002"
+
 [tools."aqua:ahmetb/kubectx/kubens"."platforms.linux-x64"]
 checksum = "sha256:326c021c7b35468ed9a187b361198d0f22ae32828139c65eb6670c0d8301cc09"
 url = "https://github.com/ahmetb/kubectx/releases/download/v0.11.0/kubens_v0.11.0_linux_x86_64.tar.gz"
@@ -26,6 +38,12 @@ url_api = "https://api.github.com/repos/ahmetb/kubectx/releases/assets/382591017
 version = "2.103.3"
 backend = "aqua:cli/cli"
 specifiers = ["2.103.3"]
+
+[tools."aqua:cli/cli"."platforms.linux-arm64"]
+checksum = "sha256:ee32df2323c8847f5fac6cb6b4b69ca75828e9329a8f22f677021f7b3306ce63"
+url = "https://github.com/cli/cli/releases/download/v2.103.3/gh_2.103.3_linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/cli/cli/releases/assets/679195636"
+provenance = "github-attestations"
 
 [tools."aqua:cli/cli"."platforms.linux-x64"]
 checksum = "sha256:4c806978ffce1cec70853302a56d70ac6da4f19bae7adca4e1a8ab00633dd91d"
@@ -38,6 +56,12 @@ version = "0.51.0"
 backend = "aqua:derailed/k9s"
 specifiers = ["0.51.0"]
 
+[tools."aqua:derailed/k9s"."platforms.linux-arm64"]
+checksum = "sha256:3ee05c82e5f9198928a4e86133608ba6a2c10a2244d6a7789e820f78319d640c"
+checksum_source = "mise-versions"
+url = "https://github.com/derailed/k9s/releases/download/v0.51.0/k9s_Linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/derailed/k9s/releases/assets/440226045"
+
 [tools."aqua:derailed/k9s"."platforms.linux-x64"]
 checksum = "sha256:c3752ad51a5a4015a113819c4eeb6e55a4d0e4b8e652494797532f6fc8161dd7"
 url = "https://github.com/derailed/k9s/releases/download/v0.51.0/k9s_Linux_amd64.tar.gz"
@@ -47,6 +71,12 @@ url_api = "https://api.github.com/repos/derailed/k9s/releases/assets/440224321"
 version = "0.38.1"
 backend = "aqua:docker/buildx"
 specifiers = ["0.38.1"]
+
+[tools."aqua:docker/buildx"."platforms.linux-arm64"]
+checksum = "sha256:3b83b3731916ba433feccaaa689fe5bcdc81c641d92c8e6c2ea865dfa141c97a"
+url = "https://github.com/docker/buildx/releases/download/v0.38.1/buildx-v0.38.1.linux-arm64"
+url_api = "https://api.github.com/repos/docker/buildx/releases/assets/660618318"
+provenance = "cosign"
 
 [tools."aqua:docker/buildx"."platforms.linux-x64"]
 checksum = "sha256:e25d5cd675092bb5d1d03632fdc46cdf3fede7b514dc5f023a105e00d3ce5ad4"
@@ -59,6 +89,12 @@ version = "5.6.1"
 backend = "aqua:docker/compose"
 specifiers = ["5.6.1"]
 
+[tools."aqua:docker/compose"."platforms.linux-arm64"]
+checksum = "sha256:42cfa75f51ad0ccf290bad37899e0038a8c10a0069e85233ecc1d53e3ff1347d"
+url = "https://github.com/docker/compose/releases/download/v5.6.1/docker-compose-linux-aarch64"
+url_api = "https://api.github.com/repos/docker/compose/releases/assets/661714743"
+provenance = "cosign"
+
 [tools."aqua:docker/compose"."platforms.linux-x64"]
 checksum = "sha256:47737f4236e6d3ccea7291995203f8f018058783b4c3a9469119811a0b5db8c0"
 url = "https://github.com/docker/compose/releases/download/v5.6.1/docker-compose-linux-x86_64"
@@ -70,6 +106,12 @@ version = "0.25.2"
 backend = "aqua:jesseduffield/lazydocker"
 specifiers = ["0.25.2"]
 
+[tools."aqua:jesseduffield/lazydocker"."platforms.linux-arm64"]
+checksum = "sha256:005c38b685aaa557e7d646d83a3dadb5024340eeed8c6a2e1949eee6f530de23"
+checksum_source = "mise-versions"
+url = "https://github.com/jesseduffield/lazydocker/releases/download/v0.25.2/lazydocker_0.25.2_Linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/jesseduffield/lazydocker/releases/assets/399711570"
+
 [tools."aqua:jesseduffield/lazydocker"."platforms.linux-x64"]
 checksum = "sha256:0d9dbfc26068b218e7ed84b104748cadc6e3cf733c0afd35465306fb39b9523c"
 url = "https://github.com/jesseduffield/lazydocker/releases/download/v0.25.2/lazydocker_0.25.2_Linux_x86_64.tar.gz"
@@ -79,6 +121,12 @@ url_api = "https://api.github.com/repos/jesseduffield/lazydocker/releases/assets
 version = "0.66.2"
 backend = "aqua:jesseduffield/lazygit"
 specifiers = ["0.66.2"]
+
+[tools."aqua:jesseduffield/lazygit"."platforms.linux-arm64"]
+checksum = "sha256:79a3161eeb642f0473e23db6341f7baabd4a5933e921a9c1167c5d5c765c41a4"
+checksum_source = "mise-versions"
+url = "https://github.com/jesseduffield/lazygit/releases/download/v0.66.2/lazygit_0.66.2_linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/jesseduffield/lazygit/releases/assets/646837842"
 
 [tools."aqua:jesseduffield/lazygit"."platforms.linux-x64"]
 checksum = "sha256:158efc9ddfa1241fab5fb3526bb442c8dc6c4b1904d73213b9e4e93e03c52034"
@@ -90,6 +138,12 @@ version = "0.12.6"
 backend = "aqua:neovim/neovim"
 specifiers = ["0.12.6"]
 
+[tools."aqua:neovim/neovim"."platforms.linux-arm64"]
+checksum = "sha256:8f1f64a0bdb97247034038c3823c6cbad5bdf9ecd5751b85494b71c3ee04c815"
+checksum_source = "mise-versions"
+url = "https://github.com/neovim/neovim/releases/download/v0.12.6/nvim-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/neovim/neovim/releases/assets/625399160"
+
 [tools."aqua:neovim/neovim"."platforms.linux-x64"]
 checksum = "sha256:474430d53e6264f6d6dd18db42d6dc9df3a1b56ca9e88a325bbf860e1a811d87"
 url = "https://github.com/neovim/neovim/releases/download/v0.12.6/nvim-linux-x86_64.tar.gz"
@@ -99,6 +153,12 @@ url_api = "https://api.github.com/repos/neovim/neovim/releases/assets/625399155"
 version = "12.16.1"
 backend = "aqua:pnpm/pnpm"
 specifiers = ["12.16.1"]
+
+[tools."aqua:pnpm/pnpm"."platforms.linux-arm64"]
+checksum = "sha256:f5847699e5d528f8f8e9bcfb385e58cb9fba7482af1b1aa7b70737be42277f81"
+url = "https://github.com/pnpm/pnpm/releases/download/v12.16.1/pnpm-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/681916052"
+provenance = "github-attestations"
 
 [tools."aqua:pnpm/pnpm"."platforms.linux-x64"]
 checksum = "sha256:565ff81174a14f6f7bd5d84c1b17e51031a80230d370a1fe24be5d16bd02a825"

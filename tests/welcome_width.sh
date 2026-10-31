@@ -101,8 +101,11 @@ main() {
     "Debian GNU/Linux 13 (trixie)" 100 "Debian 13 ·"
   check "Ubuntu: point release and LTS dropped, borders aligned" \
     "Ubuntu 24.04.5 LTS" 100 "Ubuntu 24.04 ·"
+  # The row ends with the machine (x86_64, aarch64): the image's own.
+  local arch
+  arch="$(docker run --rm "${IMAGE}" uname -m)"
   check "a long row widens the whole box" \
-    "${LONG_NAME}" 140 "Workstations 9.4 · x86_64"
+    "${LONG_NAME}" 140 "Workstations 9.4 · ${arch}"
   check "a narrow terminal cuts the row instead" \
     "${LONG_NAME}" 80 "…"
   return "${FAILED}"
