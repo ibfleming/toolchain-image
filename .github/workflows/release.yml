@@ -132,8 +132,10 @@ jobs:
         - registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # Not toJSON(...), which CodeQL reads as exposing every secret; a GITHUB_TOKEN (ghs_ and
+      # alphanumerics) needs no YAML quoting.
       build-secrets: |
-        github_token: ${{ toJSON(secrets.GITHUB_TOKEN) }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
 
   test-ci:
     name: Test ci (${{ matrix.arch }})
@@ -229,8 +231,10 @@ jobs:
         - registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # Not toJSON(...), which CodeQL reads as exposing every secret; a GITHUB_TOKEN (ghs_ and
+      # alphanumerics) needs no YAML quoting.
       build-secrets: |
-        github_token: ${{ toJSON(secrets.GITHUB_TOKEN) }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
 
   # The full suite, including the consumer template end to end, on both images per architecture.
   test-dev:
