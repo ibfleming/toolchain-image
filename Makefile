@@ -22,6 +22,7 @@ MISE_IMG := toolchain/mise:local
 .PHONY: test test-ci test-structure test-smoke test-parity test-k9s test-starship test-docker clean
 .PHONY: test-structure-ci test-structure-dev test-smoke-ci test-smoke-dev test-metadata size
 .PHONY: test-log test-welcome test-mise test-lifecycle test-template test-clipboard test-release-version
+.PHONY: test-release-notes
 
 help: ## List targets
   @grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -136,6 +137,7 @@ shell-kube-demo: ## shell-live with a fake multi-context kubeconfig (no cluster 
 TESTS_CI := test-structure-ci test-smoke-ci test-log
 TESTS := $(TESTS_CI) test-structure-dev test-smoke-dev test-parity test-metadata test-k9s test-starship
 TESTS += test-docker test-welcome test-lifecycle test-template test-clipboard test-release-version test-mise
+TESTS += test-release-notes
 test: $(TESTS) ## Run all image tests
 test-ci: $(TESTS_CI) ## Run the tests that need only the ci image
 
@@ -189,6 +191,9 @@ test-clipboard: ## Clipboard and browser bridges: OSC 52, the real xclip on a di
 
 test-release-version: ## Release versioning: bumps, tag pushes, refusals, re-runs after a tag push (host)
   tests/release_version.sh
+
+test-release-notes: ## Release notes: the builder's verify commands run as printed, the toolchain table (host)
+  tests/release_notes.sh
 
 test-log: ## The logging library as installed in the image (levels, colors, annotations)
   docker run --rm -v "$(HOST_CURDIR)/tests/log.sh:/t.sh:ro" $(CI_IMG) bash /t.sh /usr/local/lib/toolchain
