@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
-      - name: Harden the runner (egress allowlist)
+      - name: Harden the Runner (Egress Allowlist)
         uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           egress-policy: block
@@ -63,12 +63,12 @@ jobs:
       - uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
       # Online jactionlint rules (impostor commits, version comments vs. pinned SHAs, known-vulnerable
       # actions) need the GitHub API; a local `make lint` stays offline.
-      - name: Formatting and lint
+      - name: Formatting and Lint
         env:
           JACTIONLINT_ONLINE: "1"
           GITHUB_TOKEN: ${{ github.token }}
         run: make lint
-      - name: Conventional Commits (pushed commits)
+      - name: Conventional Commits (Pushed Commits)
         if: ${{ github.event_name == 'push' }}
         env:
           COMMITS_FROM: ${{ github.event.before }}
@@ -87,7 +87,7 @@ jobs:
       REGISTRY: ghcr.io/${{ github.repository_owner }}/toolchain
       CACHE_REF: ghcr.io/${{ github.repository_owner }}/toolchain/buildcache
     steps:
-      - name: Harden the runner (egress audit)
+      - name: Harden the Runner (Egress Audit)
         uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           egress-policy: audit
@@ -101,13 +101,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
       # A run uses ~7 GB (images, then Trivy's export of dev); runners start with ~15 GB free.
-      - name: Disk space (images are ~2 GB each; Trivy exports them again)
+      - name: Disk Space (Images Are ~2 GB Each; Trivy Exports Them Again)
         run: scripts/free_disk.sh 20
       # The release builds with APT_REFRESH=<run id>-<attempt> to fetch current Debian packages, and
       # pushes its build cache. Using the last release's value here matches that cache, so CI
       # rebuilds only the layers a change touches, on that release's packages (refreshed by every
       # release, at least weekly); the release gate still scans freshly built images.
-      - name: Reuse the last release's build cache
+      - name: Reuse the Last Release's Build Cache
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -116,7 +116,7 @@ jobs:
           [[ $key == null-null ]] && key=""
           echo "APT_REFRESH=${key}" >> "$GITHUB_ENV"
           echo "APT_REFRESH=${key:-<none: no release yet>}"
-      - name: Build ci + dev (local)
+      - name: Build ci + dev (Local)
         env:
           GITHUB_TOKEN: ${{ github.token }} # BuildKit secret for mise downloads, never a build arg
           REVISION: ${{ github.sha }}
@@ -133,8 +133,8 @@ jobs:
         run: make spell
       # dev is built FROM ci and only adds to it, so scanning dev covers ci's packages too.
       # Releases scan both.
-      - name: Vulnerability gate
+      - name: Vulnerability Gate
         run: make scan SCAN_IMGS=toolchain/dev:local >> "$GITHUB_STEP_SUMMARY"
-      - name: Disk use
+      - name: Disk Use
         if: ${{ always() }}
         run: df -h /

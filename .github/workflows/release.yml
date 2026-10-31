@@ -42,7 +42,7 @@ jobs:
       CACHE_REF: ghcr.io/${{ github.repository_owner }}/toolchain/buildcache
       CACHE_TO: "1"
     steps:
-      - name: Harden the runner (egress audit)
+      - name: Harden the Runner (Egress Audit)
         uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           egress-policy: audit
@@ -65,7 +65,7 @@ jobs:
 
       # A release holds more than CI (its build cache until pushed, then both pulled images, then
       # Trivy's exports), so it keeps the full cleanup's headroom.
-      - name: Disk space (images are ~2 GB each; Trivy exports them again)
+      - name: Disk Space (Images Are ~2 GB Each; Trivy Exports Them Again)
         run: scripts/free_disk.sh 30
 
       - name: Version
@@ -74,13 +74,13 @@ jobs:
           GH_TOKEN: ${{ github.token }} # does the newest tag already have a release? (re-runs)
         run: scripts/release_version.sh | tee -a "$GITHUB_OUTPUT"
 
-      - name: Previous release (what changed, for the dev image's welcome)
+      - name: Previous Release (What Changed, for the dev Image's Welcome)
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
         run: scripts/previous_tools.sh "$VERSION" | tee -a "$GITHUB_ENV"
 
-      - name: Build and push to staging (SBOM + provenance)
+      - name: Build and Push to Staging (SBOM + Provenance)
         env:
           VERSION: ${{ steps.version.outputs.version }}
           REVISION: ${{ github.sha }}
@@ -97,7 +97,7 @@ jobs:
           { echo "CI_DIGEST=$ci"; echo "DEV_DIGEST=$dev"; } >> "$GITHUB_ENV"
           docker buildx prune --builder toolchain --all --force >/dev/null # pushed; drop local build cache
 
-      - name: Test the pushed digests
+      - name: Test the Pushed Digests
         run: |
           # Both at once; each pull's failure still fails the step.
           docker pull -q "$REGISTRY/staging/ci@$CI_DIGEST" & ci_pull=$!
@@ -108,7 +108,7 @@ jobs:
           docker tag "$REGISTRY/staging/dev@$DEV_DIGEST" toolchain/dev:local
           make -j "$(nproc)" --output-sync=target test
 
-      - name: Vulnerability gate
+      - name: Vulnerability Gate
         run: |
           # Scan the pulled release digests by their real references (labels in the report).
           # Every image is scanned; the step fails if any of them fails the gate. The same findings
@@ -125,20 +125,20 @@ jobs:
       # Code scanning tracks the default branch, so only runs on main (weekly and manual releases)
       # upload; a tag push releases a commit those runs also scan. Uploaded even when the gate
       # fails, so the blocking findings show up in the Security tab.
-      - name: Vulnerability findings to code scanning (ci)
+      - name: Vulnerability Findings to Code Scanning (ci)
         if: ${{ !cancelled() && github.ref == 'refs/heads/main' && hashFiles('sarif/ci.sarif') != '' }}
         uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           sarif_file: sarif/ci.sarif
           category: trivy-ci
-      - name: Vulnerability findings to code scanning (dev)
+      - name: Vulnerability Findings to Code Scanning (dev)
         if: ${{ !cancelled() && github.ref == 'refs/heads/main' && hashFiles('sarif/dev.sarif') != '' }}
         uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           sarif_file: sarif/dev.sarif
           category: trivy-dev
 
-      - name: Promote by digest copy
+      - name: Promote by Digest Copy
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
@@ -154,7 +154,7 @@ jobs:
             [[ $got == "$d" ]] || { echo "digest changed on promote: $got != $d" >&2; exit 1; }
           done
 
-      - name: Sign (keyless) and verify
+      - name: Sign (Keyless) and Verify
         env:
           IDENTITY: https://github.com/${{ github.workflow_ref }}
         run: |
@@ -166,7 +166,7 @@ jobs:
             echo "signed + verified: $ref"
           done
 
-      - name: Tag scheduled/manual release
+      - name: Tag Scheduled/Manual Release
         if: ${{ steps.version.outputs.new_tag == 'true' }}
         env:
           TAG: ${{ steps.version.outputs.tag }}
@@ -178,7 +178,7 @@ jobs:
           git -c "http.${GITHUB_SERVER_URL}/.extraheader=AUTHORIZATION: basic ${auth}" \
             push origin "$TAG"
 
-      - name: Release notes and assets
+      - name: Release Notes and Assets
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.tag }}
@@ -200,7 +200,7 @@ jobs:
       # Signed SLSA build provenance for the release assets (the images carry their own, from
       # BuildKit). Attached as <tag>.intoto.jsonl, the name OpenSSF Scorecard's Signed-Releases
       # check looks for; `gh attestation verify --bundle` checks it (README: Verify an image).
-      - name: Provenance for the release assets
+      - name: Provenance for the Release Assets
         id: provenance
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:

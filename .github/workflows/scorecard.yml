@@ -36,7 +36,7 @@ jobs:
       security-events: write # results to code scanning
       id-token: write # publish results (OIDC) for the badge
     steps:
-      - name: Harden the runner (egress audit)
+      - name: Harden the Runner (Egress Audit)
         uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           egress-policy: audit
@@ -49,14 +49,14 @@ jobs:
           results_file: results.sarif
           results_format: sarif
           publish_results: true
-      - name: Keep the results (5 days)
+      - name: Keep the Results (5 Days)
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: scorecard-sarif
           path: results.sarif
           retention-days: 5
           if-no-files-found: error
-      - name: Results to code scanning
+      - name: Results to Code Scanning
         uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           sarif_file: results.sarif
