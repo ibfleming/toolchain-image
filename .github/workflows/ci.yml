@@ -78,7 +78,7 @@ jobs:
   # One job per architecture, each on a native runner (no emulation): both images are built and the
   # full suite runs on amd64 and arm64.
   build-test:
-    name: Build & test (${{ matrix.arch }})
+    name: Build & Test (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
