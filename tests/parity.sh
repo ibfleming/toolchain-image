@@ -32,8 +32,8 @@ main() {
     log::fatal "usage: tests/parity.sh <ci image> <dev image>"
   fi
   manifest="$(awk "${AWK_TOOLS}" "${REPO_DIR}/toolchain/mise.toml" | sort)"
-  ci="$(docker run --rm "${ci_image}" print-versions)"
-  dev="$(docker run --rm "${dev_image}" print-versions)"
+  ci="$(docker run --rm --network none "${ci_image}" print-versions)"
+  dev="$(docker run --rm --network none "${dev_image}" print-versions)"
 
   if ! diff -u <(echo "${manifest}") <(echo "${ci}") \
     --label manifest --label ci; then

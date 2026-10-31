@@ -19,7 +19,8 @@ MISE_IMG := toolchain/mise:local
 
 .PHONY: help builder lint fmt spell lock scan check-commits check-pr-title screenshots changelog
 .PHONY: build bake-print shell shell-live shell-kube-demo
-.PHONY: test test-structure test-smoke test-parity test-k9s test-starship test-docker clean
+.PHONY: test test-ci test-structure test-smoke test-parity test-k9s test-starship test-docker clean
+.PHONY: test-structure-ci test-structure-dev test-smoke-ci test-smoke-dev test-metadata size
 .PHONY: test-log test-welcome test-mise test-lifecycle test-template test-clipboard test-release-version
 
 help: ## List targets
@@ -131,21 +132,38 @@ shell-kube-demo: ## shell-live with a fake multi-context kubeconfig (no cluster 
     -v "$(HOST_CURDIR)/tests/fixtures/kubeconfig.yaml:/fixtures/kubeconfig.yaml:ro" $(DEV_IMG) \
     bash -c 'cp /fixtures/kubeconfig.yaml /tmp/kubeconfig-demo && exec zsh -l'
 
-TESTS := test-structure test-smoke test-parity test-k9s test-starship test-docker test-log test-welcome
-TESTS += test-lifecycle test-template test-clipboard test-release-version
-TESTS += test-mise
+# test-ci needs only the ci image: the release tests ci before dev is built on it.
+TESTS_CI := test-structure-ci test-smoke-ci test-log
+TESTS := $(TESTS_CI) test-structure-dev test-smoke-dev test-parity test-metadata test-k9s test-starship
+TESTS += test-docker test-welcome test-lifecycle test-template test-clipboard test-release-version test-mise
 test: $(TESTS) ## Run all image tests
+test-ci: $(TESTS_CI) ## Run the tests that need only the ci image
 
-test-structure:
-  container-structure-test test --image $(CI_IMG)  --config tests/ci.structure.yaml
+test-structure: test-structure-ci test-structure-dev
+test-structure-ci:
+  container-structure-test test --image $(CI_IMG) --config tests/ci.structure.yaml
+test-structure-dev:
   container-structure-test test --image $(DEV_IMG) --config tests/dev.structure.yaml
 
-test-smoke:
-  @for img in $(CI_IMG) $(DEV_IMG); do echo "== $$img"; \
-    docker run --rm -v "$(HOST_CURDIR)/tests/smoke.sh:/smoke.sh:ro" $$img bash /smoke.sh; done
+# Offline (--network none): every pinned tool runs and reports its version without downloading anything.
+test-smoke: test-smoke-ci test-smoke-dev
+test-smoke-ci test-smoke-dev: test-smoke-%:
+  docker run --rm --network none -v "$(HOST_CURDIR)/tests/smoke.sh:/smoke.sh:ro" toolchain/$*:local bash /smoke.sh
 
 test-parity:
   tests/parity.sh $(CI_IMG) $(DEV_IMG)
+
+test-metadata: ## The dev image's devcontainer.metadata label: valid, vscode, nothing secret, commands present
+  tests/devcontainer_metadata.sh $(CI_IMG) $(DEV_IMG)
+
+# The images `make size` reports.
+SIZE_IMGS ?= $(CI_IMG) $(DEV_IMG)
+
+size: ## Image sizes as a Markdown table (CI adds it to the run summary)
+  @printf '| Image | Architecture | Size | Layers |\n| --- | --- | --: | --: |\n'
+  @for img in $(SIZE_IMGS); do docker image inspect "$$img" \
+    --format "| \`$$img\` | {{.Architecture}} | {{.Size}} | {{len .RootFS.Layers}} |"; done \
+    | awk -F' [|] ' '{ $$3 = sprintf("%.2f GB", $$3 / 1e9); print }' OFS=' | '
 
 test-docker: ## Docker outside of Docker: the dev user reaches the host engine via the socket proxy
   tests/docker_socket.sh $(DEV_IMG)

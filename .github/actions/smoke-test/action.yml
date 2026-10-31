@@ -1,0 +1,82 @@
+# Test images the way `make test` does on a laptop: the same make targets, on images given by
+# reference. CI passes the images it just built (toolchain/*:local); the release passes the digests
+# it pushed, which are pulled and tagged toolchain/*:local first, so every target runs unchanged.
+#
+# Expects the repository checked out and its tools installed (jdx/mise-action): make,
+# container-structure-test, Trivy.
+name: Smoke Test
+description: >-
+  Test the ci image, or ci and dev, with the repository's make targets; report sizes; optionally run
+  the vulnerability gate
+
+inputs:
+  ci-image:
+    description: The ci image to test (a local tag, or a registry reference to pull)
+    required: true
+  dev-image:
+    description: The dev image built on it; empty tests ci alone (`make test-ci`)
+    required: false
+    default: ""
+  scan:
+    description: '"true" runs the vulnerability gate on dev (it contains ci), or on ci alone'
+    required: false
+    default: "false"
+  sarif-prefix:
+    description: With scan, also write SARIF for code scanning to <prefix><ci|dev>.sarif
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Use the Images Under Test
+      shell: bash
+      env:
+        CI_IMAGE: ${{ inputs.ci-image }}
+        DEV_IMAGE: ${{ inputs.dev-image }}
+      run: |
+        # Pull what isn't local yet (both at once), then tag it as the make targets expect.
+        declare -A local_tag=([ci]=toolchain/ci:local [dev]=toolchain/dev:local)
+        declare -A image=([ci]="$CI_IMAGE" [dev]="$DEV_IMAGE")
+        pids=()
+        for t in ci dev; do
+          ref="${image[$t]}"
+          [[ -n $ref && $ref != "${local_tag[$t]}" ]] || continue
+          docker image inspect "$ref" >/dev/null 2>&1 || { docker pull -q "$ref" & pids+=($!); }
+        done
+        for pid in "${pids[@]}"; do wait "$pid"; done
+        for t in ci dev; do
+          ref="${image[$t]}"
+          [[ -n $ref && $ref != "${local_tag[$t]}" ]] && docker tag "$ref" "${local_tag[$t]}"
+        done
+        echo "testing: ci=${CI_IMAGE} dev=${DEV_IMAGE:-<none>} on $(uname -m)"
+
+    - name: Test
+      shell: bash
+      env:
+        TARGET: ${{ inputs.dev-image != '' && 'test' || 'test-ci' }}
+      run: |
+        make -j "$(nproc)" --output-sync=target "$TARGET"
+        df -h /
+
+    - name: Size Report
+      shell: bash
+      env:
+        SIZE_IMGS: ${{ inputs.dev-image != '' && 'toolchain/ci:local toolchain/dev:local' || 'toolchain/ci:local' }}
+      run: |
+        { echo "### Image sizes ($(uname -m))"; make -s size SIZE_IMGS="$SIZE_IMGS"; } >> "$GITHUB_STEP_SUMMARY"
+
+    # Scanned by their given references, so the report names the real images.
+    - name: Vulnerability Gate
+      if: ${{ inputs.scan == 'true' }}
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.dev-image != '' && inputs.dev-image || inputs.ci-image }}
+        NAME: ${{ inputs.dev-image != '' && 'dev' || 'ci' }}
+        SARIF_PREFIX: ${{ inputs.sarif-prefix }}
+      run: |
+        if [[ -n $SARIF_PREFIX ]]; then
+          mkdir -p "$(dirname "${SARIF_PREFIX}x")"
+          export SCAN_SARIF="${SARIF_PREFIX}${NAME}.sarif"
+        fi
+        scripts/scan.sh "$IMAGE" >> "$GITHUB_STEP_SUMMARY"

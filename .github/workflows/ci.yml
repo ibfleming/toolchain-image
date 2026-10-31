@@ -142,17 +142,17 @@ jobs:
           make build
           docker buildx prune --builder toolchain --all --force >/dev/null # images are loaded; drop build cache
           df -h /
-      - name: Test
-        run: |
-          make -j "$(nproc)" --output-sync=target test
-          df -h /
       - name: Spelling
         if: ${{ matrix.arch == 'amd64' }} # the same files on both
         run: make spell
-      # dev is built FROM ci and only adds to it, so scanning dev covers ci's packages too.
-      # Releases scan both.
-      - name: Vulnerability Gate
-        run: make scan SCAN_IMGS=toolchain/dev:local >> "$GITHUB_STEP_SUMMARY"
+      # The full suite, sizes and the vulnerability gate, as the release runs them. dev is built
+      # FROM ci and only adds to it, so scanning dev covers ci's packages too; releases scan both.
+      - name: Test, Size Report and Vulnerability Gate
+        uses: $/.github/actions/smoke-test
+        with:
+          ci-image: toolchain/ci:local
+          dev-image: toolchain/dev:local
+          scan: "true"
       - name: Disk Use
         if: ${{ always() }}
         run: df -h /
