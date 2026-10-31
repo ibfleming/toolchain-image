@@ -69,12 +69,12 @@ spell: ## Spell-check the repo with cspell (runs in the dev image; config: .conf
     npx --yes cspell@10.3.6 lint --no-progress --gitignore '**/*' '.*' 'config/home/**/.*' 'config/home/.config/**' \
     'template/.*' 'template/.devcontainer/**' 'template/.vscode/**' '.config/**' '.github/**'
 
-lock: builder ## Regenerate toolchain/{,dev/,shell/}mise.lock using the image's pinned mise
+lock: builder ## Regenerate toolchain/{,dev/,shell/}mise.lock (amd64 + arm64) using the image's pinned mise
   docker buildx build --builder $(BUILDER) --target mise --load -t $(MISE_IMG) -q . >/dev/null
   @for dir in toolchain toolchain/dev toolchain/shell; do echo "== $$dir"; \
     docker run --rm -u $$(id -u):$$(id -g) -e HOME=/tmp -e MISE_DATA_DIR=/tmp/mise \
       -e MISE_CACHE_DIR=/tmp/cache -e MISE_LOCKED=0 -e MISE_GLOBAL_CONFIG_FILE=/m/mise.toml \
-      -v "$(HOST_CURDIR)/$$dir:/m" -w / $(MISE_IMG) mise lock --global --platform linux-x64 \
+      -v "$(HOST_CURDIR)/$$dir:/m" -w / $(MISE_IMG) mise lock --global --platform linux-x64,linux-arm64 \
       && chmod 0644 "$$dir/mise.lock"; done
 
 screenshots: ## Render the README screenshots of `welcome` from the local dev image (FONT=<Nerd Font Mono .ttf>)
