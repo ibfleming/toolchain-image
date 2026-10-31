@@ -18,7 +18,9 @@ inputs:
     required: false
     default: ""
   scan:
-    description: '"true" runs the vulnerability gate on dev (it contains ci), or on ci alone'
+    description: >-
+      "true" runs the vulnerability gate on dev (it contains ci), or on ci alone; the report goes to
+      the run summary and to scan-<ci|dev>.md (for the release notes)
     required: false
     default: "false"
   sarif-prefix:
@@ -66,7 +68,8 @@ runs:
       run: |
         { echo "### Image sizes ($(uname -m))"; make -s size SIZE_IMGS="$SIZE_IMGS"; } >> "$GITHUB_STEP_SUMMARY"
 
-    # Scanned by their given references, so the report names the real images.
+    # Scanned by their given references, so the report names the real images. bash here runs with
+    # -e and pipefail, so a failed gate fails the step through the pipe.
     - name: Vulnerability Gate
       if: ${{ inputs.scan == 'true' }}
       shell: bash
@@ -79,4 +82,4 @@ runs:
           mkdir -p "$(dirname "${SARIF_PREFIX}x")"
           export SCAN_SARIF="${SARIF_PREFIX}${NAME}.sarif"
         fi
-        scripts/scan.sh "$IMAGE" >> "$GITHUB_STEP_SUMMARY"
+        scripts/scan.sh "$IMAGE" | tee "scan-${NAME}.md" >> "$GITHUB_STEP_SUMMARY"

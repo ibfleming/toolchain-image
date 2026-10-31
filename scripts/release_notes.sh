@@ -5,8 +5,10 @@
 # (from the released images), and the vulnerability report.
 #
 # Environment: REGISTRY, VERSION, CI_DIGEST, DEV_DIGEST, IDENTITY (all
-# required). Reads changes.md and scan.md from the working directory when
-# present. STDOUT is the notes; messages go to STDERR.
+# required); PROVENANCE_VERIFY (optional: the builder's cosign verify
+# commands for the signed provenance, one per line). Reads changes.md and
+# scan.md from the working directory when present. STDOUT is the notes;
+# messages go to STDERR.
 
 # The uppercase names come from the environment (checked in main).
 # shellcheck disable=SC2153
@@ -35,7 +37,7 @@ print_changes() {
 # verification commands.
 # Globals:
 #   REGISTRY, VERSION, CI_DIGEST, DEV_DIGEST, IDENTITY, OIDC_ISSUER,
-#   GITHUB_REPOSITORY
+#   GITHUB_REPOSITORY, PROVENANCE_VERIFY
 # Outputs:
 #   Markdown to STDOUT.
 #######################################
@@ -44,6 +46,12 @@ print_images() {
   local floating="\`${VERSION%.*}\` and \`${VERSION%%.*}\`"
   local inspect="docker buildx imagetools inspect ${dev}"
   local repo="${GITHUB_REPOSITORY:-<owner>/<repo>}"
+  local provenance=""
+  if [[ -n "${PROVENANCE_VERIFY:-}" ]]; then
+    provenance="$(printf '%s\n%s\n\n%s\n%s\n%s\n' \
+      "Each platform's provenance is also signed, by Docker's builder" \
+      'workflow:' '```sh' "${PROVENANCE_VERIFY}" '```')"
+  fi
   cat <<EOF
 ## Images
 
@@ -75,6 +83,8 @@ cosign verify ${dev} \\
 
 SBOM and provenance (\`mode=max\`) are attached to each image index:
 \`${inspect} --format '{{json .Provenance}}'\`
+
+${provenance}
 
 The release assets (\`template.tar.gz\`, \`CHANGELOG.md\`) have signed build
 provenance, attached as \`v${VERSION}.intoto.jsonl\`:

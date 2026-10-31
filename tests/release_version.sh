@@ -98,7 +98,8 @@ EOF
 
   commit "chore: start"
   r="$(run_version exists)"
-  check "no vX.Y.Z tag yet: refuses" matches "${r}" "no vX.Y.Z tag yet.*rc=1"
+  check "no vX.Y.Z tag yet: the first release is v0.1.0" \
+    matches "${r}" $'version=0.1.0\ntag=v0.1.0\nnew_tag=true'
 
   git -C "${WORK}/repo" tag v0.1.0
   commit "fix: a bug"
@@ -111,6 +112,15 @@ EOF
   commit "feat!: a breaking change"
   r="$(run_version exists)"
   check "breaking below 1.0: minor bump" matches "${r}" "tag=v0.2.0"
+  r="$(run_version exists RELEASE_BUMP=patch)"
+  check "RELEASE_BUMP=patch overrides the commits" matches "${r}" "tag=v0.1.1"
+  r="$(run_version exists RELEASE_BUMP=major)"
+  check "RELEASE_BUMP=major below 1.0: 1.0.0" matches "${r}" "tag=v1.0.0"
+  r="$(run_version exists RELEASE_BUMP=auto)"
+  check "RELEASE_BUMP=auto: the commits decide" matches "${r}" "tag=v0.2.0"
+  r="$(run_version exists RELEASE_BUMP=huge)"
+  check "an unknown RELEASE_BUMP: refuses" \
+    matches "${r}" "must be auto, patch, minor or major.*rc=1"
   git -C "${WORK}/repo" tag v1.0.0
   commit $'fix: y\n\nBREAKING CHANGE: removed x'
   r="$(run_version exists)"
@@ -133,11 +143,12 @@ EOF
   r="$(run_version exists GITHUB_REF=refs/heads/feature)"
   check "a run from another branch: refuses" \
     matches "${r}" "not refs/heads/feature.*rc=1"
-  r="$(run_version exists GITHUB_REF_TYPE=tag GITHUB_REF_NAME=v3.0.0)"
-  check "a tag push: releases that tag" \
-    matches "${r}" $'tag=v3.0.0\nnew_tag=false'
-  r="$(run_version exists GITHUB_REF_TYPE=tag GITHUB_REF_NAME=v3.0.0-rc.1)"
-  check "a tag that isn't vX.Y.Z: refuses" matches "${r}" "not vX.Y.Z.*rc=1"
+  r="$(run_version exists GITHUB_REF=refs/tags/v3.0.0)"
+  check "a run from a tag: refuses (tags come from the release)" \
+    matches "${r}" "not refs/tags/v3.0.0.*rc=1"
+  r="$(run_version exists RELEASE_BUMP=minor)"
+  check "RELEASE_BUMP=minor on a released commit: next minor" \
+    matches "${r}" $'tag=v2.1.0\nnew_tag=true'
 
   return "${FAILED}"
 }

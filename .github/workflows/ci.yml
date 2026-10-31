@@ -90,16 +90,11 @@ jobs:
             runner: ubuntu-26.04
           - arch: arm64
             runner: ubuntu-26.04-arm
-    # Longest amd64 run on record ~8 min with the release's build cache; a base-digest bump rebuilds
-    # cold, and so does arm64 until releases push an arm64 build cache.
+    # Builds without a cache (a cold arm64 job takes ~4 min; only releases keep a build cache), so a
+    # run takes the same time whatever changed.
     timeout-minutes: 45
     permissions:
-      actions: read # find the last release run, whose build cache CI reuses
       contents: read
-      packages: read # read the release pipeline's registry build cache
-    env:
-      REGISTRY: ghcr.io/${{ github.repository_owner }}/toolchain
-      CACHE_REF: ghcr.io/${{ github.repository_owner }}/toolchain/buildcache
     steps:
       - name: Harden the Runner (Egress Audit)
         uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
@@ -111,28 +106,9 @@ jobs:
           persist-credentials: false
       - name: Install Tools (mise)
         uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
-      - name: Log In to GHCR
-        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
       # A run uses ~7 GB (images, then Trivy's export of dev); runners start with ~15 GB free.
       - name: Disk Space (Images Are ~2 GB Each; Trivy Exports Them Again)
         run: scripts/free_disk.sh 20
-      # The release builds with APT_REFRESH=<run id>-<attempt> to fetch current Debian packages, and
-      # pushes its build cache. Using the last release's value here matches that cache, so CI
-      # rebuilds only the layers a change touches, on that release's packages (refreshed by every
-      # release, at least weekly); the release gate still scans freshly built images.
-      - name: Reuse the Last Release's Build Cache
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          key="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow release.yml --status success \
-            --limit 1 --json databaseId,attempt -q '.[0] | "\(.databaseId)-\(.attempt)"' || true)"
-          [[ $key == null-null ]] && key=""
-          echo "APT_REFRESH=${key}" >> "$GITHUB_ENV"
-          echo "APT_REFRESH=${key:-<none: no release yet>}"
       - name: Build ci + dev (Local)
         env:
           GITHUB_TOKEN: ${{ github.token }} # BuildKit secret for mise downloads, never a build arg

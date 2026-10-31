@@ -1,10 +1,11 @@
 // Build definitions for the two published images (what each contains is in the Dockerfile).
 //
-//   docker buildx bake          ci + dev (the default group): attested, tagged for staging
+//   docker buildx bake          ci + dev (the default group): attested, tagged REGISTRY/<target>:VERSION
 //   docker buildx bake local    ci + dev loaded into the local image store as toolchain/*:local
 //
-// One run builds both images from the same commit and base digest. Every variable below can be set
-// from the environment, which is how CI and the release workflow configure a build.
+// Every variable below can be set from the environment (CI) or passed as a bake variable (the
+// release builds each target through docker/github-builder, which sets its own outputs, tags,
+// provenance and cache, and builds dev on the pushed ci digest: see .github/workflows/release.yml).
 
 
 // =================================================================================================
@@ -12,17 +13,10 @@
 // =================================================================================================
 
 // --- Where images go -----------------------------------------------------------------------------
-// Pushed as REGISTRY/staging/<target>:VERSION. CI sets ghcr.io/<owner>/toolchain; the default suits
-// a local registry (`docker run -d -p 5000:5000 registry:2`).
+// Tagged REGISTRY/<target>:VERSION by a plain `docker buildx bake`; the default suits a local
+// registry (`docker run -d -p 5000:5000 registry:2`).
 variable "REGISTRY" { default = "localhost:5000/toolchain" }
 variable "VERSION" { default = "0.0.0-dev" }
-
-// --- Build cache ---------------------------------------------------------------------------------
-// Registry cache ref prefix, e.g. "${REGISTRY}/buildcache". Empty = no registry cache (local
-// builds).
-variable "CACHE_REF" { default = "" }
-// "1" = also write the registry cache (release pipeline only; CI and laptops only read it).
-variable "CACHE_TO" { default = "" }
 
 // --- Image metadata ------------------------------------------------------------------------------
 // Git commit the image is built from (org.opencontainers.image.revision).
@@ -43,18 +37,6 @@ variable "PLATFORMS" { default = "" }
 // A new value per release run (the release workflow passes its run ID): rebuilds the apt layers,
 // so each release ships Debian's current security fixes instead of cached packages. Empty = cache.
 variable "APT_REFRESH" { default = "" }
-
-// --- Cache helpers -------------------------------------------------------------------------------
-// Read the registry cache of the given targets; nothing without CACHE_REF.
-function "cache_from" {
-  params = [names]
-  result = CACHE_REF == "" ? [] : [for n in names : "type=registry,ref=${CACHE_REF}:${n}"]
-}
-// Write the target's registry cache (every layer, mode=max); only with CACHE_REF and CACHE_TO=1.
-function "cache_to" {
-  params = [name]
-  result = CACHE_REF == "" || CACHE_TO != "1" ? [] : ["type=registry,ref=${CACHE_REF}:${name},mode=max"]
-}
 
 
 // =================================================================================================
@@ -85,20 +67,17 @@ target "_common" {
 }
 
 target "ci" {
-  inherits   = ["_common"]
-  target     = "ci"
-  tags       = ["${REGISTRY}/staging/ci:${VERSION}"]
-  cache-from = cache_from(["ci"])
-  cache-to   = cache_to("ci")
+  inherits = ["_common"]
+  target   = "ci"
+  tags     = ["${REGISTRY}/ci:${VERSION}"]
 }
 
-// dev also reads ci's cache: it's built FROM ci, so those layers are shared.
+// The release passes `dev.contexts.ci=docker-image://<ci>@<digest>`: the named context replaces the
+// Dockerfile's ci stage, so dev is built on the exact ci image that was pushed and tested.
 target "dev" {
-  inherits   = ["_common"]
-  target     = "dev"
-  tags       = ["${REGISTRY}/staging/dev:${VERSION}"]
-  cache-from = cache_from(["ci", "dev"])
-  cache-to   = cache_to("dev")
+  inherits = ["_common"]
+  target   = "dev"
+  tags     = ["${REGISTRY}/dev:${VERSION}"]
   labels = {
     // The dev container setup that ships with the image. Merged with the consuming repo's
     // devcontainer.json when the container is created (the repo's file wins on conflicts).

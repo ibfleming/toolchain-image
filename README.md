@@ -20,9 +20,9 @@ tool manifest, so "it works in my dev container" means "it works in CI".
 - **Everything is pinned:** the base image by digest, every tool by exact version, each verified
   by checksum, maintainer signature or git commit.
   [Renovate](https://docs.renovatebot.com) proposes updates as pull requests.
-- **Releases are verifiable:** SBOM and build provenance attached, keyless signatures, a
-  vulnerability gate, and promotion by digest (the released bytes are the tested bytes).
-  A weekly rebuild picks up OS security fixes.
+- **Releases are verifiable:** built natively for amd64 and arm64, SBOM and signed build provenance
+  attached, keyless signatures, a vulnerability gate, and promotion by digest (the released bytes
+  are the tested bytes). A weekly rebuild picks up OS security fixes; `edge` follows `main`.
 
 ## What's inside
 
@@ -141,14 +141,14 @@ when it appears: see [Customizing](docs/customizing.md#shell-zsh).
 
 ```sh
 cosign verify ghcr.io/<owner>/toolchain/dev@sha256:<digest> \
-  --certificate-identity 'https://github.com/<owner>/<repo>/.github/workflows/release.yml@refs/tags/v<version>' \
+  --certificate-identity 'https://github.com/<owner>/<repo>/.github/workflows/release.yml@refs/heads/main' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
 Each release's notes contain the exact command, the toolchain list, the changes and the
-vulnerability report. The identity above is for releases cut from a tag. Weekly and manual
-releases are signed by the workflow on `main`, so their identity ends in
-`release.yml@refs/heads/main`.
+vulnerability report. Releases up to v0.11.0 that were cut from a tag were signed with an
+identity ending in `release.yml@refs/tags/v<version>`. Each platform's build provenance is also
+signed, by Docker's builder workflow; the release notes list those `cosign verify` commands.
 
 The release assets (`template.tar.gz`, `CHANGELOG.md`) come with signed build provenance,
 attached to the release as `v<version>.intoto.jsonl`:
@@ -169,11 +169,14 @@ gh attestation verify template.tar.gz --bundle v<version>.intoto.jsonl \
    requests. Updates arrive weekly in UTC, together in one pull request (Python minor and major
    bumps wait for approval on the Dependency Dashboard, then come separately); set `timezone` in
    `.github/renovate.json` if you want a local schedule.
-4. Push a `v0.1.0` tag to cut the first release. After that, releases happen on every `vX.Y.Z`
-   tag, on demand (`workflow_dispatch` on `main`), and weekly. Weekly and on-demand releases
-   take the next version from the commits since the last tag: a `feat` bumps minor, a breaking
+4. Run the **Release** workflow on `main` (Actions → Release → Run workflow) to cut the first
+   release, `v0.1.0`. After that, releases happen weekly and on demand, and every push to `main`
+   publishes `edge`. The pipeline creates the `vX.Y.Z` tags; never push one by hand. A release
+   takes the next version from the commits since the last tag: a `feat` bumps minor, a breaking
    change bumps major (minor below 1.0.0), and anything else bumps patch, including a rebuild
-   with no changes.
+   with no changes. A manual run can force the bump (`patch`, `minor` or `major`).
+   The builds use `docker/github-builder`, so allow its actions in Settings → Actions (see
+   [Automation](#automation)).
 5. Replace the owner in `.github/CODEOWNERS` and in the README's Scorecard badge with yours.
 6. If your images are private, consumers need `docker login ghcr.io` with a token that has
    `read:packages`.
@@ -203,16 +206,25 @@ every lint, test and release tool at the pinned versions from [`.config/mise.tom
 
 ### Automation
 
-| Workflow                                     | Runs on                                             | What it does                                                                                                                                                                                                                                                             |
-| -------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [CI](.github/workflows/ci.yml)               | Pull requests, pushes to `main`                     | `make lint` (including a security audit of the workflows), commit messages, build both images and `make test` on amd64 and arm64 (through the [smoke-test action](.github/actions/smoke-test/action.yml)), spelling, the vulnerability gate. The same targets as locally |
-| [PR Title](.github/workflows/pr-title.yml)   | Pull requests (opened, edited, pushed)              | The title is the squash commit, so it must be a Conventional Commit                                                                                                                                                                                                      |
-| [Release](.github/workflows/release.yml)     | `vX.Y.Z` tags, weekly, manual                       | Build, test the pushed digests, gate, promote by digest, sign, attach provenance, publish the GitHub Release; findings go to code scanning                                                                                                                               |
-| [CodeQL](.github/workflows/codeql.yml)       | Pull requests, pushes to `main`, weekly             | Static analysis of the workflows and scripts, to code scanning                                                                                                                                                                                                           |
-| [Scorecard](.github/workflows/scorecard.yml) | Pushes to `main`, weekly, branch protection changes | OpenSSF Scorecard: publishes the score for the badge, findings to code scanning                                                                                                                                                                                          |
-| Renovate (GitHub App)                        | Weekly                                              | One grouped pull request with every dependency update (`.github/renovate.json`)                                                                                                                                                                                          |
+| Workflow                                               | Runs on                                             | What it does                                                                                                                                                                                                                                                             |
+| ------------------------------------------------------ | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [CI](.github/workflows/ci.yml)                         | Pull requests, pushes to `main`                     | `make lint` (including a security audit of the workflows), commit messages, build both images and `make test` on amd64 and arm64 (through the [smoke-test action](.github/actions/smoke-test/action.yml)), spelling, the vulnerability gate. The same targets as locally |
+| [PR Title](.github/workflows/pr-title.yml)             | Pull requests (opened, edited, pushed)              | The title is the squash commit, so it must be a Conventional Commit                                                                                                                                                                                                      |
+| [Release](.github/workflows/release.yml)               | Pushes to `main` (`edge`), manual, weekly (called)  | Build each image natively for amd64 and arm64 (`docker/github-builder`), test the pushed digests, gate, promote by digest, sign, attach provenance; for a release also tag and publish the GitHub Release. Findings go to code scanning                                  |
+| [Weekly Rebuild](.github/workflows/weekly-rebuild.yml) | Weekly                                              | Calls Release, so the images pick up OS security fixes even without changes                                                                                                                                                                                              |
+| [CodeQL](.github/workflows/codeql.yml)                 | Pull requests, pushes to `main`, weekly             | Static analysis of the workflows and scripts, to code scanning                                                                                                                                                                                                           |
+| [Scorecard](.github/workflows/scorecard.yml)           | Pushes to `main`, weekly, branch protection changes | OpenSSF Scorecard: publishes the score for the badge, findings to code scanning                                                                                                                                                                                          |
+| Renovate (GitHub App)                                  | Weekly                                              | One grouped pull request with every dependency update (`.github/renovate.json`)                                                                                                                                                                                          |
 
-Every job runs StepSecurity Harden-Runner, which records the runner's network egress (audit mode).
+Every job we define runs StepSecurity Harden-Runner, which records the runner's network egress
+(audit mode); the builds inside `docker/github-builder` are its own jobs.
+
+Actions are SHA-pinned and limited to an allowlist (Settings → Actions → General): GitHub's own,
+`docker/*`, `jdx/*`, `ossf/*` and `step-security/*`, plus four repositories that
+`docker/github-builder` references for registry logins we don't use
+(`aws-actions/configure-aws-credentials`, `google-github-actions/auth`, `azure/login`,
+`chainguard-dev/setup-chainctl`). GitHub checks every action a called workflow references, even
+steps that never run.
 
 To add a tool: edit `toolchain/mise.toml` (or `toolchain/dev/mise.toml` for dev-only tools, or
 `toolchain/shell/mise.toml` for tools the shell config uses), run
