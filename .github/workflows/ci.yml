@@ -63,7 +63,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Install Tools (mise)
-        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
       # Online jactionlint rules (impostor commits, version comments vs. pinned SHAs, known-vulnerable
       # actions) need the GitHub API; a local `make lint` stays offline.
       - name: Formatting and Lint
@@ -105,7 +105,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Tools (mise)
-        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
       # A run uses ~7 GB (images, then Trivy's export of dev); runners start with ~15 GB free.
       - name: Disk Space (Images Are ~2 GB Each; Trivy Exports Them Again)
         run: scripts/free_disk.sh 20

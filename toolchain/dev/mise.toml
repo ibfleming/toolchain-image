@@ -18,7 +18,7 @@
 "aqua:derailed/k9s" = "0.51.0"
 
 # --- node (node and npm are in ../mise.toml)
-"aqua:pnpm/pnpm" = "12.16.1"
+"aqua:pnpm/pnpm" = "12.17.0"
 
 # --- editor
 "aqua:neovim/neovim" = "0.12.6"

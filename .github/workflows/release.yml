@@ -73,7 +73,7 @@ jobs:
       # No tool cache in a publishing workflow: a poisoned cache entry (written by any run that can
       # write caches) would otherwise reach the signed release.
       - name: Install Tools (mise)
-        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
         with:
           cache: false
       # A push to main builds `edge`: the next release's version plus the commit, e.g.
@@ -164,7 +164,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Tools (mise)
-        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
         with:
           cache: false
       - name: Log In to GHCR
@@ -264,7 +264,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Tools (mise)
-        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
         with:
           cache: false
       - name: Log In to GHCR
@@ -330,7 +330,7 @@ jobs:
           # The write token stays out of .git/config; only the tag push below gets it.
           persist-credentials: false
       - name: Install Tools (mise)
-        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
         with:
           cache: false
       - name: Log In to GHCR
