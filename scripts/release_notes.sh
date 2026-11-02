@@ -46,11 +46,17 @@ print_images() {
   local floating="\`${VERSION%.*}\` and \`${VERSION%%.*}\`"
   local inspect="docker buildx imagetools inspect ${dev}"
   local repo="${GITHUB_REPOSITORY:-<owner>/<repo>}"
-  local provenance=""
+  local provenance="" commands
   if [[ -n "${PROVENANCE_VERIFY:-}" ]]; then
+    # The builder prints the identity regex unquoted: zsh (and bash with
+    # failglob) reject its `*` as a glob that matches nothing. Quote it, and
+    # drop the blank lines the workflow's YAML block leaves.
+    commands="$(sed -e '/^[[:space:]]*$/d' \
+      -e "s/\(--certificate-identity-regexp\) \([^' ][^ ]*\)/\1 '\2'/" \
+      <<<"${PROVENANCE_VERIFY}")"
     provenance="$(printf '%s\n%s\n\n%s\n%s\n%s\n' \
       "Each platform's provenance is also signed, by Docker's builder" \
-      'workflow:' '```sh' "${PROVENANCE_VERIFY}" '```')"
+      'workflow:' '```sh' "${commands}" '```')"
   fi
   cat <<EOF
 ## Images
