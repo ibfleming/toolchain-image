@@ -62,7 +62,7 @@ jobs:
       source-date-epoch: ${{ steps.version.outputs.source_date_epoch }}
     steps:
       - name: Harden the Runner (Egress Audit)
-        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
           egress-policy: audit
       - name: Check Out
@@ -73,7 +73,7 @@ jobs:
       # No tool cache in a publishing workflow: a poisoned cache entry (written by any run that can
       # write caches) would otherwise reach the signed release.
       - name: Install Tools (mise)
-        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
           cache: false
       # A push to main builds `edge`: the next release's version plus the commit, e.g.
@@ -109,7 +109,7 @@ jobs:
       contents: read
       id-token: write # keyless signing of the provenance, signed GHA cache
       packages: write # push ghcr.io/<owner>/toolchain/ci by digest
-    uses: docker/github-builder/.github/workflows/bake.yml@cbc9d42f8c89a55623392aadd03600965b80e963 # v1.18.1
+    uses: docker/github-builder/.github/workflows/bake.yml@a31d2311da4d55e21b978c1c52bab82ba97d51ee # v1.19.0
     with:
       target: ci
       output: image
@@ -156,7 +156,7 @@ jobs:
       security-events: write # vulnerability findings to code scanning
     steps:
       - name: Harden the Runner (Egress Audit)
-        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
           egress-policy: audit
       - name: Check Out
@@ -164,11 +164,11 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Tools (mise)
-        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
           cache: false
       - name: Log In to GHCR
-        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -184,7 +184,7 @@ jobs:
       # Uploaded even when the gate fails, so the blocking findings show up in the Security tab.
       - name: Vulnerability Findings to Code Scanning
         if: ${{ !cancelled() && hashFiles('sarif/ci.sarif') != '' }}
-        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           sarif_file: sarif/ci.sarif
           category: trivy-ci-${{ matrix.arch }}
@@ -206,7 +206,7 @@ jobs:
       contents: read
       id-token: write # keyless signing of the provenance, signed GHA cache
       packages: write # pull ci, push ghcr.io/<owner>/toolchain/dev by digest
-    uses: docker/github-builder/.github/workflows/bake.yml@cbc9d42f8c89a55623392aadd03600965b80e963 # v1.18.1
+    uses: docker/github-builder/.github/workflows/bake.yml@a31d2311da4d55e21b978c1c52bab82ba97d51ee # v1.19.0
     with:
       target: dev
       output: image
@@ -256,7 +256,7 @@ jobs:
       security-events: write # vulnerability findings to code scanning
     steps:
       - name: Harden the Runner (Egress Audit)
-        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
           egress-policy: audit
       - name: Check Out
@@ -264,11 +264,11 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Tools (mise)
-        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
           cache: false
       - name: Log In to GHCR
-        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -284,7 +284,7 @@ jobs:
           sarif-prefix: sarif/
       - name: Vulnerability Findings to Code Scanning
         if: ${{ !cancelled() && hashFiles('sarif/dev.sarif') != '' }}
-        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           sarif_file: sarif/dev.sarif
           category: trivy-dev-${{ matrix.arch }}
@@ -320,7 +320,7 @@ jobs:
       IDENTITY: ${{ github.server_url }}/${{ github.repository }}/.github/workflows/release.yml@${{ github.ref }}
     steps:
       - name: Harden the Runner (Egress Audit)
-        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
           egress-policy: audit
       - name: Check Out
@@ -330,11 +330,11 @@ jobs:
           # The write token stays out of .git/config; only the tag push below gets it.
           persist-credentials: false
       - name: Install Tools (mise)
-        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
           cache: false
       - name: Log In to GHCR
-        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}

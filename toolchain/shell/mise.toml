@@ -6,14 +6,14 @@
 [tools]
 # --- prompt and navigation
 "aqua:starship/starship" = "1.27.0"
-"aqua:junegunn/fzf" = "0.74.5"
+"aqua:junegunn/fzf" = "0.75.0"
 "aqua:ajeetdsouza/zoxide" = "0.10.0"
 "aqua:sharkdp/vivid" = "0.11.1"
 
 # --- modern coreutils
 "aqua:eza-community/eza" = "0.23.5"
 "aqua:sharkdp/bat" = "0.26.1"
-"aqua:sharkdp/fd" = "10.5.0"
+"aqua:sharkdp/fd" = "10.5.2"
 "aqua:BurntSushi/ripgrep" = "15.2.0"
 
 # --- git pager
