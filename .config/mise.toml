@@ -8,10 +8,10 @@ editorconfig-checker = "4.0.2"
 shfmt = "3.14.1"
 shellcheck = "0.11.0"
 # GitHub Actions lint + security audit (actionlint checks plus zizmor-equivalent rules).
-jactionlint = "2.4.0"
+jactionlint = "2.5.0"
 taplo = "0.10.0"
 # release pipeline: vulnerability gate + keyless signing (also usable locally: make scan)
-trivy = "0.76.1"
+trivy = "0.76.2"
 cosign = "3.1.4"
 # prettier runs on node; same node version as the image toolchain.
 node = "26.13.0"
@@ -22,4 +22,4 @@ git-cliff = "2.14.2"
 "npm:@commitlint/config-conventional" = "21.2.4"
 # Markdown lint (structure, lists, headings, tables); prettier formats, this checks.
 "npm:markdownlint-cli2" = "0.24.0"
-"npm:prettier" = "3.9.10"
+"npm:prettier" = "3.10.0"
